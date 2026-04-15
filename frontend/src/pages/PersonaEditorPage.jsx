@@ -5,6 +5,7 @@ import TagInput from '../components/TagInput'
 import Toggle from '../components/Toggle'
 import Modal from '../components/Modal'
 import VoiceBuilder from '../components/VoiceBuilder'
+import VoicePicker from '../components/VoicePicker'
 import { getPersona, updatePersona, generatePrompt, previewPrompt, duplicatePersona, deletePersona } from '../lib/api'
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-400'
@@ -216,6 +217,34 @@ export default function PersonaEditorPage() {
             <Field label="Description"><textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={2} className={inputCls} /></Field>
             <Field label="Background Story"><textarea value={form.background_story || ''} onChange={(e) => set('background_story', e.target.value)} rows={4} className={inputCls} /></Field>
             <Field label="Expertise Areas"><TagInput tags={form.expertise_areas || []} onChange={(v) => set('expertise_areas', v)} /></Field>
+          </Section>
+
+          {/* Section: Voice */}
+          <Section id="section-voice" title="Voice" description="Choose an ElevenLabs voice for your agent">
+            <VoicePicker
+              selectedVoiceId={form.voice_id}
+              voiceSettings={{
+                model: form.voice_model,
+                stability: form.voice_stability,
+                similarity: form.voice_similarity,
+                style: form.voice_style,
+                speed: form.voice_speed,
+              }}
+              onVoiceSelect={(voice) => {
+                set('voice_id', voice.voice_id)
+                setForm((prev) => ({
+                  ...prev,
+                  voice_id: voice.voice_id,
+                  voice_name: voice.name,
+                  voice_preview_url: voice.preview_url,
+                }))
+                setDirty(true)
+              }}
+              onSettingsChange={(s) => {
+                setForm((prev) => ({ ...prev, ...s }))
+                setDirty(true)
+              }}
+            />
           </Section>
 
           {/* Section 2: Personality Traits */}

@@ -34,6 +34,14 @@ class PersonaCreate(BaseModel):
     emotional_responses: dict | None = None
     escalation_triggers: list = Field(default_factory=list)
     safety_rules: dict | None = None
+    voice_id: str | None = None
+    voice_name: str | None = None
+    voice_preview_url: str | None = None
+    voice_model: str = "eleven_turbo_v2"
+    voice_stability: float = 0.5
+    voice_similarity: float = 0.75
+    voice_style: float = 0.0
+    voice_speed: float = 1.0
     custom_instructions: str | None = None
     system_prompt: str | None = None
 
@@ -68,6 +76,14 @@ class PersonaUpdate(BaseModel):
     emotional_responses: dict | None = None
     escalation_triggers: list | None = None
     safety_rules: dict | None = None
+    voice_id: str | None = None
+    voice_name: str | None = None
+    voice_preview_url: str | None = None
+    voice_model: str | None = None
+    voice_stability: float | None = None
+    voice_similarity: float | None = None
+    voice_style: float | None = None
+    voice_speed: float | None = None
     custom_instructions: str | None = None
     system_prompt: str | None = None
 
@@ -103,6 +119,14 @@ class PersonaResponse(BaseModel):
     emotional_responses: dict | None = None
     escalation_triggers: list = Field(default_factory=list)
     safety_rules: dict | None = None
+    voice_id: str | None = None
+    voice_name: str | None = None
+    voice_preview_url: str | None = None
+    voice_model: str
+    voice_stability: float
+    voice_similarity: float
+    voice_style: float
+    voice_speed: float
     custom_instructions: str | None = None
     system_prompt: str | None = None
     created_at: datetime

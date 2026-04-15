@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
-from app.routes import personas, agents, voice_builder
+from app.routes import personas, agents, voice_builder, voices
 
 
 @asynccontextmanager
@@ -26,6 +26,7 @@ app.add_middleware(
 app.include_router(personas.router, prefix="/api/v1")
 app.include_router(agents.router, prefix="/api/v1")
 app.include_router(voice_builder.router, prefix="/api/v1")
+app.include_router(voices.router, prefix="/api/v1")
 
 
 @app.get("/health")

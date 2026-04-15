@@ -89,6 +89,16 @@ class Persona(Base):
         "out_of_scope_response": "",
     })
 
+    # Voice Configuration (ElevenLabs)
+    voice_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    voice_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    voice_preview_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    voice_model: Mapped[str] = mapped_column(String(100), nullable=False, default="eleven_turbo_v2")
+    voice_stability: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    voice_similarity: Mapped[float] = mapped_column(Float, nullable=False, default=0.75)
+    voice_style: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    voice_speed: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+
     # Custom Instructions
     custom_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
 

@@ -14,10 +14,9 @@ router = APIRouter(prefix="/voice-builder", tags=["voice-builder"])
 _sessions: dict[str, dict] = {}
 
 # LLM config from env
-LLM_PROVIDER = os.environ.get("VOICE_BUILDER_LLM_PROVIDER", "ollama")
-LLM_MODEL = os.environ.get("VOICE_BUILDER_LLM_MODEL", "qwen3:8b")
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4.1-nano")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 
 SYSTEM_PROMPT = (
     "You are a data extraction assistant. The user is describing an AI agent's persona "
@@ -29,32 +28,34 @@ SYSTEM_PROMPT = (
 
 
 async def _call_llm(user_message: str) -> str:
-    """Call LLM (Ollama or OpenAI) and return raw text response."""
+    """Call LLM to extract fields. Uses OpenAI (gpt-4.1-nano) by default, Ollama as fallback."""
     async with httpx.AsyncClient(timeout=30.0) as client:
-        if LLM_PROVIDER == "openai" and OPENAI_API_KEY:
+        if OPENAI_API_KEY:
             resp = await client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                 json={
-                    "model": LLM_MODEL if LLM_MODEL != "qwen3:8b" else "gpt-4o-mini",
+                    "model": LLM_MODEL,
                     "messages": [
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": user_message},
                     ],
-                    "temperature": 0.2,
+                    "temperature": 0.1,
+                    "max_tokens": 500,
                 },
             )
             resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"]
         else:
-            # Ollama
+            # Ollama fallback
+            ollama_model = os.environ.get("VOICE_BUILDER_LLM_MODEL", "qwen3:8b")
             resp = await client.post(
                 f"{OLLAMA_BASE_URL}/api/generate",
                 json={
-                    "model": LLM_MODEL,
+                    "model": ollama_model,
                     "prompt": f"[SYSTEM]{SYSTEM_PROMPT}[/SYSTEM]\n\n{user_message}",
                     "stream": False,
-                    "options": {"temperature": 0.2},
+                    "options": {"temperature": 0.1},
                 },
             )
             resp.raise_for_status()

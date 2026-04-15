@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Mic, MicOff, X, Minus, SkipForward, Keyboard, Volume2, VolumeX, Loader2, Check, Sparkles } from 'lucide-react'
+import { Mic, X, Minus, Keyboard, Volume2, VolumeX, Loader2, Check, Sparkles } from 'lucide-react'
 
 const API = '/api/v1/voice-builder'
 
@@ -12,11 +12,7 @@ async function api(path, options = {}) {
   return res.json()
 }
 
-const SpeechRecognition = typeof window !== 'undefined'
-  ? window.SpeechRecognition || window.webkitSpeechRecognition
-  : null
-
-// status: idle | speaking | listening | processing | extracted | done
+// status: idle | speaking | listening | transcribing | processing | extracted | done
 export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) {
   const [open, setOpen] = useState(false)
   const [minimized, setMinimized] = useState(false)
@@ -32,66 +28,102 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
   const [showTextInput, setShowTextInput] = useState(false)
   const [textInput, setTextInput] = useState('')
   const [completed, setCompleted] = useState(false)
-  const [supported] = useState(!!SpeechRecognition)
 
-  const recognitionRef = useRef(null)
-  const synthRef = useRef(typeof window !== 'undefined' ? window.speechSynthesis : null)
   const sessionRef = useRef(null)
   const questionRef = useRef(null)
+  const recorderRef = useRef(null)
+  const audioRef = useRef(null)
+  const chunksRef = useRef([])
 
   const setQuestionSync = (q) => { questionRef.current = q; setQuestion(q) }
   const setSessionSync = (s) => { sessionRef.current = s; setSessionId(s) }
 
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch {}
+  // --- Recording via MediaRecorder + Whisper STT ---
+  const stopRecording = useCallback(() => {
+    if (recorderRef.current && recorderRef.current.state === 'recording') {
+      recorderRef.current.stop()
     }
   }, [])
 
-  const startListening = useCallback(() => {
-    if (!SpeechRecognition) return
-    stopListening()
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      chunksRef.current = []
 
-    const rec = new SpeechRecognition()
-    rec.lang = lang === 'tr' ? 'tr-TR' : 'en-US'
-    rec.continuous = false
-    rec.interimResults = true
-    recognitionRef.current = rec
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
 
-    rec.onresult = (event) => {
-      const result = event.results[0]
-      setTranscript(result[0].transcript)
-      if (result.isFinal) {
-        setStatus('processing')
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        if (blob.size < 100) { setStatus('idle'); return }
+
+        // Transcribe via Whisper
+        setStatus('transcribing')
+        try {
+          const formData = new FormData()
+          formData.append('file', blob, 'audio.webm')
+          formData.append('language', lang)
+          const resp = await fetch('/api/v1/stt/transcribe', { method: 'POST', body: formData })
+          if (!resp.ok) throw new Error()
+          const { text } = await resp.json()
+          setTranscript(text)
+          processAnswer(text)
+        } catch {
+          setStatus('idle')
+        }
+      }
+
+      recorderRef.current = recorder
+      recorder.start()
+      setStatus('listening')
+      setTranscript('')
+    } catch {
+      setStatus('idle')
+    }
+  }, [lang])
+
+  // --- TTS via ElevenLabs ---
+  const speakQuestion = useCallback(async (text) => {
+    if (muted) { setStatus('idle'); return }
+    setStatus('speaking')
+    try {
+      const voiceId = persona?.voice_id || 'EXAVITQu4vr4xnSDxMaL' // fallback: Sarah
+      const resp = await fetch('/api/v1/tts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          voice_id: voiceId,
+          model_id: persona?.voice_model || 'eleven_turbo_v2',
+          stability: persona?.voice_stability ?? 0.5,
+          similarity_boost: persona?.voice_similarity ?? 0.75,
+          style: persona?.voice_style ?? 0.0,
+        }),
+      })
+      if (!resp.ok) throw new Error()
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      audioRef.current = audio
+      audio.onended = () => { setStatus('idle'); URL.revokeObjectURL(url); audioRef.current = null }
+      audio.onerror = () => { setStatus('idle'); audioRef.current = null }
+      audio.play()
+    } catch {
+      // Fallback to browser TTS if ElevenLabs fails
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(text)
+        utterance.lang = lang === 'tr' ? 'tr-TR' : 'en-US'
+        utterance.onend = () => setStatus('idle')
+        utterance.onerror = () => setStatus('idle')
+        window.speechSynthesis.speak(utterance)
+      } else {
+        setStatus('idle')
       }
     }
+  }, [muted, persona, lang])
 
-    rec.onerror = () => setStatus('idle')
-    rec.onend = () => {
-      // Only process if we got a transcript and we're in processing state
-    }
-
-    setStatus('listening')
-    setTranscript('')
-    rec.start()
-  }, [lang, stopListening])
-
-  const speakQuestion = useCallback((text) => {
-    if (muted || !synthRef.current) {
-      // Skip TTS, go directly to listening
-      setStatus('idle')
-      return
-    }
-    setStatus('speaking')
-    synthRef.current.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = lang === 'tr' ? 'tr-TR' : 'en-US'
-    utterance.rate = 1.0
-    utterance.onend = () => setStatus('idle')
-    utterance.onerror = () => setStatus('idle')
-    synthRef.current.speak(utterance)
-  }, [lang, muted])
-
+  // --- Session management ---
   const startSession = useCallback(async () => {
     const data = await api('/start', {
       method: 'POST',
@@ -109,9 +141,10 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
   const handleOpen = useCallback(() => {
     setOpen(true)
     setMinimized(false)
-    if (!sessionId) startSession()
-  }, [sessionId, startSession])
+    if (!sessionRef.current) startSession()
+  }, [startSession])
 
+  // --- Process answer via backend ---
   const processAnswer = useCallback(async (text) => {
     const sid = sessionRef.current
     const q = questionRef.current
@@ -120,11 +153,7 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
     try {
       const data = await api('/answer', {
         method: 'POST',
-        body: JSON.stringify({
-          session_id: sid,
-          question_id: q.id,
-          transcript: text,
-        }),
+        body: JSON.stringify({ session_id: sid, question_id: q.id, transcript: text }),
       })
 
       if (data.clarification_needed) {
@@ -134,13 +163,10 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
         return
       }
 
-      // Show extracted fields
       if (data.extracted_fields && Object.keys(data.extracted_fields).length > 0) {
         setExtracted(data.extracted_fields)
         onFieldsExtracted(data.extracted_fields)
         setStatus('extracted')
-
-        // Scroll to relevant section
         if (q.field_group) {
           setTimeout(() => {
             const el = document.getElementById(`section-${q.field_group}`)
@@ -149,7 +175,6 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
         }
       }
 
-      // Move to next question after showing extraction
       setTimeout(() => {
         if (data.completed || !data.next_question) {
           setCompleted(true)
@@ -167,18 +192,11 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
     }
   }, [onFieldsExtracted, speakQuestion])
 
-  // When status becomes 'processing' from listening, send the transcript
-  useEffect(() => {
-    if (status === 'processing' && transcript) {
-      processAnswer(transcript)
-    }
-  }, [status, transcript, processAnswer])
-
   const handleSkip = useCallback(async () => {
     const sid = sessionRef.current
     const q = questionRef.current
     if (!sid || !q) return
-    stopListening()
+    stopRecording()
     const data = await api('/skip', {
       method: 'POST',
       body: JSON.stringify({ session_id: sid, question_id: q.id }),
@@ -193,34 +211,28 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
       setExtracted(null)
       speakQuestion(data.next_question.text)
     }
-  }, [stopListening, speakQuestion])
+  }, [stopRecording, speakQuestion])
 
   const handleTextSubmit = useCallback(() => {
     if (!textInput.trim()) return
-    setTranscript(textInput.trim())
-    setStatus('processing')
+    const text = textInput.trim()
+    setTranscript(text)
     setTextInput('')
     setShowTextInput(false)
-    processAnswer(textInput.trim())
+    processAnswer(text)
   }, [textInput, processAnswer])
 
   const handleMicToggle = useCallback(() => {
     if (status === 'listening') {
-      stopListening()
-      if (transcript) {
-        setStatus('processing')
-        processAnswer(transcript)
-      } else {
-        setStatus('idle')
-      }
+      stopRecording()
     } else if (status === 'idle') {
-      startListening()
+      startRecording()
     }
-  }, [status, transcript, startListening, stopListening, processAnswer])
+  }, [status, startRecording, stopRecording])
 
   const handleClose = () => {
-    stopListening()
-    if (synthRef.current) synthRef.current.cancel()
+    stopRecording()
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
     setOpen(false)
     setMinimized(false)
   }
@@ -292,11 +304,7 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
 
       {/* Main content */}
       <div className="flex-1 px-4 py-4 overflow-y-auto min-h-[200px]">
-        {!supported ? (
-          <div className="text-sm text-red-500 text-center py-8">
-            Voice input is not supported in your browser. Please use Chrome or Edge.
-          </div>
-        ) : completed ? (
+        {completed ? (
           <div className="text-center py-6 space-y-4">
             <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto">
               <Check size={24} strokeWidth={1.5} className="text-green-600" />
@@ -319,20 +327,14 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
           </div>
         ) : (
           <>
-            {/* Current question */}
-            {question && (
-              <p className="text-sm text-gray-800 leading-relaxed mb-4">{question.text}</p>
-            )}
+            {question && <p className="text-sm text-gray-800 leading-relaxed mb-4">{question.text}</p>}
 
-            {/* Status indicator */}
             <div className="flex items-center gap-2 mb-3">
               {status === 'listening' && (
                 <>
                   <span className="flex items-center gap-1.5 text-xs text-green-600">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    Listening...
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> Listening...
                   </span>
-                  {/* Simple waveform */}
                   <div className="flex items-end gap-0.5 h-4">
                     {[1,2,3,4].map((i) => (
                       <div key={i} className="w-1 bg-green-400 rounded-full animate-pulse" style={{ height: `${8 + Math.random() * 8}px`, animationDelay: `${i * 0.1}s` }} />
@@ -342,30 +344,30 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
               )}
               {status === 'speaking' && (
                 <span className="flex items-center gap-1.5 text-xs text-blue-600">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                  Speaking...
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" /> Speaking...
+                </span>
+              )}
+              {status === 'transcribing' && (
+                <span className="flex items-center gap-1.5 text-xs text-purple-600">
+                  <Loader2 size={12} className="animate-spin" /> Transcribing...
                 </span>
               )}
               {status === 'processing' && (
                 <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <Loader2 size={12} className="animate-spin" />
-                  Processing...
+                  <Loader2 size={12} className="animate-spin" /> Processing...
                 </span>
               )}
               {status === 'extracted' && (
                 <span className="flex items-center gap-1.5 text-xs text-green-600">
-                  <Check size={12} />
-                  Got it!
+                  <Check size={12} /> Got it!
                 </span>
               )}
             </div>
 
-            {/* Live transcript */}
             {transcript && status !== 'extracted' && (
               <div className="text-xs text-gray-400 italic mb-3">"{transcript}"</div>
             )}
 
-            {/* Extracted fields preview */}
             {extracted && (
               <div className="bg-green-50 rounded-lg p-3 mb-3 space-y-1">
                 {Object.entries(extracted).map(([key, val]) => {
@@ -381,7 +383,6 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
               </div>
             )}
 
-            {/* Text input fallback */}
             {showTextInput && (
               <div className="flex gap-2 mb-3">
                 <input
@@ -399,7 +400,6 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
         )}
       </div>
 
-      {/* Controls */}
       {!completed && question && (
         <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -410,19 +410,17 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
           </div>
           <button
             onClick={handleMicToggle}
-            disabled={status === 'processing' || status === 'speaking' || status === 'extracted'}
+            disabled={status === 'processing' || status === 'speaking' || status === 'extracted' || status === 'transcribing'}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
               status === 'listening'
                 ? 'bg-red-500 text-white ring-4 ring-red-200 animate-pulse'
-                : status === 'processing'
+                : status === 'processing' || status === 'transcribing'
                 ? 'bg-gray-200 text-gray-400'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {status === 'processing' ? (
+            {status === 'processing' || status === 'transcribing' ? (
               <Loader2 size={20} className="animate-spin" />
-            ) : status === 'listening' ? (
-              <Mic size={20} strokeWidth={1.5} />
             ) : (
               <Mic size={20} strokeWidth={1.5} />
             )}
