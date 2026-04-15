@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Mic, X, Minus, Keyboard, Volume2, VolumeX, Loader2, Check, Sparkles } from 'lucide-react'
+import { Mic, X, Minus, Keyboard, Volume2, VolumeX, Loader2, Check, Sparkles, AlertCircle } from 'lucide-react'
 
 const API = '/api/v1/voice-builder'
 
@@ -8,7 +8,10 @@ async function api(path, options = {}) {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
   })
-  if (!res.ok) throw new Error('Request failed')
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(err.detail || 'Request failed')
+  }
   return res.json()
 }
 
@@ -28,15 +31,29 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
   const [showTextInput, setShowTextInput] = useState(false)
   const [textInput, setTextInput] = useState('')
   const [completed, setCompleted] = useState(false)
+  const [error, setError] = useState('')
 
   const sessionRef = useRef(null)
   const questionRef = useRef(null)
   const recorderRef = useRef(null)
   const audioRef = useRef(null)
   const chunksRef = useRef([])
+  const onFieldsExtractedRef = useRef(onFieldsExtracted)
+  onFieldsExtractedRef.current = onFieldsExtracted
 
   const setQuestionSync = (q) => { questionRef.current = q; setQuestion(q) }
   const setSessionSync = (s) => { sessionRef.current = s; setSessionId(s) }
+
+  // --- Stop any playing TTS ---
+  const stopTTS = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+    }
+  }, [])
 
   // --- Recording via MediaRecorder + Whisper STT ---
   const stopRecording = useCallback(() => {
@@ -46,30 +63,68 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
   }, [])
 
   const startRecording = useCallback(async () => {
+    setError('')
     try {
+      // Stop any playing TTS first
+      stopTTS()
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      // Pick a supported mime type
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
+        : ''
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
+      const ext = mimeType.includes('mp4') ? 'audio.mp4' : 'audio.webm'
       chunksRef.current = []
 
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
 
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        if (blob.size < 100) { setStatus('idle'); return }
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        if (blob.size < 100) {
+          setError('Recording too short, please try again')
+          setStatus('idle')
+          return
+        }
 
         // Transcribe via Whisper
         setStatus('transcribing')
         try {
           const formData = new FormData()
-          formData.append('file', blob, 'audio.webm')
+          formData.append('file', blob, ext)
           formData.append('language', lang)
           const resp = await fetch('/api/v1/stt/transcribe', { method: 'POST', body: formData })
-          if (!resp.ok) throw new Error()
+          if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}))
+            throw new Error(errData.detail || 'Transcription failed')
+          }
           const { text } = await resp.json()
+          if (!text || !text.trim()) {
+            setError('Could not understand audio, try again or type instead')
+            setStatus('idle')
+            return
+          }
           setTranscript(text)
-          processAnswer(text)
-        } catch {
+          // Process the answer
+          const sid = sessionRef.current
+          const q = questionRef.current
+          if (!sid || !q) { setStatus('idle'); return }
+          setStatus('processing')
+          try {
+            const data = await api('/answer', {
+              method: 'POST',
+              body: JSON.stringify({ session_id: sid, question_id: q.id, transcript: text }),
+            })
+            handleAnswerResponse(data, q)
+          } catch (e) {
+            setError('Failed to process answer: ' + e.message)
+            setStatus('idle')
+          }
+        } catch (e) {
+          setError(e.message || 'Transcription failed')
           setStatus('idle')
         }
       }
@@ -78,17 +133,59 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
       recorder.start()
       setStatus('listening')
       setTranscript('')
-    } catch {
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        setError('Microphone permission denied. Please allow microphone access.')
+      } else if (err.name === 'NotFoundError') {
+        setError('No microphone found. Please connect a microphone.')
+      } else {
+        setError('Failed to start recording: ' + err.message)
+      }
       setStatus('idle')
     }
-  }, [lang])
+  }, [lang, stopTTS])
+
+  // --- Handle answer response from backend ---
+  const handleAnswerResponse = useCallback((data, q) => {
+    if (data.clarification_needed) {
+      setQuestionSync(data.clarification_question)
+      setStep(data.current_step)
+      speakQuestionRef.current(data.clarification_question.text)
+      return
+    }
+
+    if (data.extracted_fields && Object.keys(data.extracted_fields).length > 0) {
+      setExtracted(data.extracted_fields)
+      onFieldsExtractedRef.current(data.extracted_fields)
+      setStatus('extracted')
+      if (q.field_group) {
+        setTimeout(() => {
+          const el = document.getElementById(`section-${q.field_group}`)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 300)
+      }
+    }
+
+    setTimeout(() => {
+      if (data.completed || !data.next_question) {
+        setCompleted(true)
+        setStatus('done')
+        setQuestionSync(null)
+      } else {
+        setQuestionSync(data.next_question)
+        setStep(data.current_step)
+        setExtracted(null)
+        speakQuestionRef.current(data.next_question.text)
+      }
+    }, 2000)
+  }, [])
 
   // --- TTS via ElevenLabs ---
   const speakQuestion = useCallback(async (text) => {
     if (muted) { setStatus('idle'); return }
     setStatus('speaking')
     try {
-      const voiceId = persona?.voice_id || 'EXAVITQu4vr4xnSDxMaL' // fallback: Sarah
+      const voiceId = persona?.voice_id || 'EXAVITQu4vr4xnSDxMaL'
       const resp = await fetch('/api/v1/tts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -107,35 +204,54 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
       const audio = new Audio(url)
       audioRef.current = audio
       audio.onended = () => { setStatus('idle'); URL.revokeObjectURL(url); audioRef.current = null }
-      audio.onerror = () => { setStatus('idle'); audioRef.current = null }
-      audio.play()
+      audio.onerror = () => { setStatus('idle'); URL.revokeObjectURL(url); audioRef.current = null }
+      try {
+        await audio.play()
+      } catch {
+        setStatus('idle')
+        URL.revokeObjectURL(url)
+        audioRef.current = null
+      }
     } catch {
-      // Fallback to browser TTS if ElevenLabs fails
+      // Fallback to browser TTS
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         const utterance = new SpeechSynthesisUtterance(text)
         utterance.lang = lang === 'tr' ? 'tr-TR' : 'en-US'
         utterance.onend = () => setStatus('idle')
         utterance.onerror = () => setStatus('idle')
         window.speechSynthesis.speak(utterance)
+        // Safety timeout — if onend never fires, reset after 30s
+        setTimeout(() => {
+          setStatus((prev) => prev === 'speaking' ? 'idle' : prev)
+        }, 30000)
       } else {
         setStatus('idle')
       }
     }
   }, [muted, persona, lang])
 
+  const speakQuestionRef = useRef(speakQuestion)
+  speakQuestionRef.current = speakQuestion
+
   // --- Session management ---
   const startSession = useCallback(async () => {
-    const data = await api('/start', {
-      method: 'POST',
-      body: JSON.stringify({ persona_id: personaId, language: lang }),
-    })
-    setSessionSync(data.session_id)
-    setQuestionSync(data.first_question)
-    setStep(data.current_step)
-    setTotal(data.total_questions)
-    setCompleted(false)
-    setExtracted(null)
-    speakQuestion(data.first_question.text)
+    setError('')
+    try {
+      const data = await api('/start', {
+        method: 'POST',
+        body: JSON.stringify({ persona_id: personaId, language: lang }),
+      })
+      setSessionSync(data.session_id)
+      setQuestionSync(data.first_question)
+      setStep(data.current_step)
+      setTotal(data.total_questions)
+      setCompleted(false)
+      setExtracted(null)
+      speakQuestion(data.first_question.text)
+    } catch (e) {
+      setError('Failed to start session: ' + e.message)
+      setStatus('idle')
+    }
   }, [personaId, lang, speakQuestion])
 
   const handleOpen = useCallback(() => {
@@ -144,95 +260,71 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
     if (!sessionRef.current) startSession()
   }, [startSession])
 
-  // --- Process answer via backend ---
-  const processAnswer = useCallback(async (text) => {
+  const handleSkip = useCallback(async () => {
     const sid = sessionRef.current
     const q = questionRef.current
     if (!sid || !q) return
+    stopRecording()
+    setError('')
+    try {
+      const data = await api('/skip', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: sid, question_id: q.id }),
+      })
+      if (data.completed || !data.next_question) {
+        setCompleted(true)
+        setStatus('done')
+        setQuestionSync(null)
+      } else {
+        setQuestionSync(data.next_question)
+        setStep(data.current_step)
+        setExtracted(null)
+        speakQuestion(data.next_question.text)
+      }
+    } catch (e) {
+      setError('Failed to skip: ' + e.message)
+    }
+  }, [stopRecording, speakQuestion])
+
+  const handleTextSubmit = useCallback(async () => {
+    if (!textInput.trim()) return
+    const text = textInput.trim()
+    setTranscript(text)
+    setTextInput('')
+    setShowTextInput(false)
+    setError('')
+
+    const sid = sessionRef.current
+    const q = questionRef.current
+    if (!sid || !q) { setError('No active session'); return }
+
+    stopTTS()
     setStatus('processing')
     try {
       const data = await api('/answer', {
         method: 'POST',
         body: JSON.stringify({ session_id: sid, question_id: q.id, transcript: text }),
       })
-
-      if (data.clarification_needed) {
-        setQuestionSync(data.clarification_question)
-        setStep(data.current_step)
-        speakQuestion(data.clarification_question.text)
-        return
-      }
-
-      if (data.extracted_fields && Object.keys(data.extracted_fields).length > 0) {
-        setExtracted(data.extracted_fields)
-        onFieldsExtracted(data.extracted_fields)
-        setStatus('extracted')
-        if (q.field_group) {
-          setTimeout(() => {
-            const el = document.getElementById(`section-${q.field_group}`)
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }, 300)
-        }
-      }
-
-      setTimeout(() => {
-        if (data.completed || !data.next_question) {
-          setCompleted(true)
-          setStatus('done')
-          setQuestionSync(null)
-        } else {
-          setQuestionSync(data.next_question)
-          setStep(data.current_step)
-          setExtracted(null)
-          speakQuestion(data.next_question.text)
-        }
-      }, 2000)
-    } catch {
+      handleAnswerResponse(data, q)
+    } catch (e) {
+      setError('Failed to process answer: ' + e.message)
       setStatus('idle')
     }
-  }, [onFieldsExtracted, speakQuestion])
-
-  const handleSkip = useCallback(async () => {
-    const sid = sessionRef.current
-    const q = questionRef.current
-    if (!sid || !q) return
-    stopRecording()
-    const data = await api('/skip', {
-      method: 'POST',
-      body: JSON.stringify({ session_id: sid, question_id: q.id }),
-    })
-    if (data.completed || !data.next_question) {
-      setCompleted(true)
-      setStatus('done')
-      setQuestionSync(null)
-    } else {
-      setQuestionSync(data.next_question)
-      setStep(data.current_step)
-      setExtracted(null)
-      speakQuestion(data.next_question.text)
-    }
-  }, [stopRecording, speakQuestion])
-
-  const handleTextSubmit = useCallback(() => {
-    if (!textInput.trim()) return
-    const text = textInput.trim()
-    setTranscript(text)
-    setTextInput('')
-    setShowTextInput(false)
-    processAnswer(text)
-  }, [textInput, processAnswer])
+  }, [textInput, stopTTS, handleAnswerResponse])
 
   const handleMicToggle = useCallback(() => {
+    setError('')
     if (status === 'listening') {
       stopRecording()
-    } else if (status === 'idle') {
+    } else if (status === 'idle' || status === 'speaking') {
+      // Allow starting recording even while TTS is speaking
       startRecording()
     }
   }, [status, startRecording, stopRecording])
 
   const handleClose = () => {
     stopRecording()
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    stopTTS()
     setOpen(false)
     setMinimized(false)
   }
@@ -329,6 +421,13 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
           <>
             {question && <p className="text-sm text-gray-800 leading-relaxed mb-4">{question.text}</p>}
 
+            {error && (
+              <div className="flex items-start gap-2 mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                <span className="text-xs text-red-700">{error}</span>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 mb-3">
               {status === 'listening' && (
                 <>
@@ -410,7 +509,7 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
           </div>
           <button
             onClick={handleMicToggle}
-            disabled={status === 'processing' || status === 'speaking' || status === 'extracted' || status === 'transcribing'}
+            disabled={status === 'processing' || status === 'extracted' || status === 'transcribing'}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
               status === 'listening'
                 ? 'bg-red-500 text-white ring-4 ring-red-200 animate-pulse'
