@@ -12,63 +12,8 @@ from app.schemas.schemas import PersonaCreate, PersonaUpdate, PersonaResponse
 router = APIRouter()
 
 
-@router.get("/", response_model=List[PersonaResponse])
-async def list_personas(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Persona).order_by(Persona.updated_at.desc()))
-    return result.scalars().all()
-
-
-@router.get("/{persona_id}", response_model=PersonaResponse)
-async def get_persona(persona_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Persona).where(Persona.id == persona_id))
-    persona = result.scalar_one_or_none()
-    if not persona:
-        raise HTTPException(status_code=404, detail="Persona not found")
-    return persona
-
-
-@router.post("/", response_model=PersonaResponse, status_code=201)
-async def create_persona(data: PersonaCreate, db: AsyncSession = Depends(get_db)):
-    persona = Persona(**data.model_dump())
-    db.add(persona)
-    await db.flush()
-    await db.refresh(persona)
-    return persona
-
-
-@router.patch("/{persona_id}", response_model=PersonaResponse)
-async def update_persona(persona_id: str, data: PersonaUpdate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Persona).where(Persona.id == persona_id))
-    persona = result.scalar_one_or_none()
-    if not persona:
-        raise HTTPException(status_code=404, detail="Persona not found")
-
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(persona, field, value)
-
-    await db.flush()
-    await db.refresh(persona)
-    return persona
-
-
-@router.delete("/{persona_id}", status_code=204)
-async def delete_persona(persona_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Persona).where(Persona.id == persona_id))
-    persona = result.scalar_one_or_none()
-    if not persona:
-        raise HTTPException(status_code=404, detail="Persona not found")
-    await db.delete(persona)
-
-
-@router.post("/{persona_id}/generate-system-prompt")
-async def generate_system_prompt(persona_id: str, db: AsyncSession = Depends(get_db)):
-    """Generate an optimized system prompt from persona traits."""
-    result = await db.execute(select(Persona).where(Persona.id == persona_id))
-    persona = result.scalar_one_or_none()
-    if not persona:
-        raise HTTPException(status_code=404, detail="Persona not found")
-
-    # Build system prompt from persona attributes
+def build_system_prompt(persona: Persona) -> str:
+    """Build system prompt from persona attributes."""
     prompt_parts = []
 
     if persona.display_name:
@@ -80,7 +25,6 @@ async def generate_system_prompt(persona_id: str, db: AsyncSession = Depends(get
     if persona.background_story:
         prompt_parts.append(f"\nBackground: {persona.background_story}")
 
-    # Personality
     traits = []
     if persona.friendliness > 70:
         traits.append("very friendly and warm")
@@ -109,7 +53,6 @@ async def generate_system_prompt(persona_id: str, db: AsyncSession = Depends(get
     if persona.tone_description:
         prompt_parts.append(f"Tone: {persona.tone_description}")
 
-    # Communication rules
     if persona.response_guidelines:
         rules = persona.response_guidelines
         prompt_parts.append("\nCommunication rules:")
@@ -124,23 +67,86 @@ async def generate_system_prompt(persona_id: str, db: AsyncSession = Depends(get
         if rules.get("avoid_jargon"):
             prompt_parts.append("- Avoid technical jargon, use simple language")
 
-    # Forbidden phrases
     if persona.forbidden_phrases:
         prompt_parts.append(f"\nNever say: {', '.join(persona.forbidden_phrases)}")
 
-    # Expertise
     if persona.expertise_areas:
         prompt_parts.append(f"\nYour areas of expertise: {', '.join(persona.expertise_areas)}")
 
-    # Emotional intelligence
     if persona.emotional_responses:
         prompt_parts.append("\nEmotional response guidelines:")
         for situation, response in persona.emotional_responses.items():
             prompt_parts.append(f"- When caller is {situation}: {response}")
 
-    generated_prompt = "\n".join(prompt_parts)
+    return "\n".join(prompt_parts)
 
-    # Save it
+
+@router.get("/", response_model=List[PersonaResponse])
+async def list_personas(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Persona).order_by(Persona.updated_at.desc()))
+    return result.scalars().all()
+
+
+@router.get("/{persona_id}", response_model=PersonaResponse)
+async def get_persona(persona_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Persona).where(Persona.id == persona_id))
+    persona = result.scalar_one_or_none()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    return persona
+
+
+@router.post("/", response_model=PersonaResponse, status_code=201)
+async def create_persona(data: PersonaCreate, db: AsyncSession = Depends(get_db)):
+    persona = Persona(**data.model_dump())
+    db.add(persona)
+    await db.flush()
+    await db.refresh(persona)
+    if not persona.system_prompt or len(persona.system_prompt.strip()) < 10:
+        persona.system_prompt = build_system_prompt(persona)
+        await db.flush()
+        await db.refresh(persona)
+    return persona
+
+
+@router.patch("/{persona_id}", response_model=PersonaResponse)
+async def update_persona(persona_id: str, data: PersonaUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Persona).where(Persona.id == persona_id))
+    persona = result.scalar_one_or_none()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(persona, field, value)
+
+    # Auto-generate system_prompt if not explicitly provided or still empty
+    if "system_prompt" not in update_data or not persona.system_prompt or len(persona.system_prompt.strip()) < 10:
+        persona.system_prompt = build_system_prompt(persona)
+
+    await db.flush()
+    await db.refresh(persona)
+    return persona
+
+
+@router.delete("/{persona_id}", status_code=204)
+async def delete_persona(persona_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Persona).where(Persona.id == persona_id))
+    persona = result.scalar_one_or_none()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    await db.delete(persona)
+
+
+@router.post("/{persona_id}/generate-prompt")
+async def generate_system_prompt(persona_id: str, db: AsyncSession = Depends(get_db)):
+    """Generate an optimized system prompt from persona traits."""
+    result = await db.execute(select(Persona).where(Persona.id == persona_id))
+    persona = result.scalar_one_or_none()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+
+    generated_prompt = build_system_prompt(persona)
     persona.system_prompt = generated_prompt
     await db.flush()
 
