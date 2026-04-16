@@ -15,6 +15,7 @@ from app.api import agents, workflows, conversations, personas, companies, knowl
 from app.api.voices import router as voices_router
 from app.api.voice_builder import router as voice_builder_router
 from app.api.catalogs import router as catalogs_router
+from app.api.conversations_api import router as conversations_api_router
 
 # Create media directory
 Path("media").mkdir(exist_ok=True)
@@ -58,6 +59,7 @@ app.include_router(knowledge_base.router, prefix="/api/v1/knowledge", tags=["Kno
 app.include_router(voices_router, prefix="/api/v1", tags=["Voices"])
 app.include_router(voice_builder_router, prefix="/api/v1/voice-builder", tags=["Voice Builder"])
 app.include_router(catalogs_router, prefix="/api/v1", tags=["Catalogs"])
+app.include_router(conversations_api_router, prefix="/api/v1/dashboard", tags=["Dashboard Conversations"])
 
 
 @app.get("/health")

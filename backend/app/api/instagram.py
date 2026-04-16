@@ -2,8 +2,13 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 import httpx
+from datetime import datetime
 from fastapi import APIRouter, Request, Query, HTTPException
 from fastapi.responses import PlainTextResponse
+from app.services.intent_scorer import score_conversation
+from app.core.database import async_session
+from app.models.conversation_state import ConversationState
+from sqlalchemy import select
 
 router = APIRouter()
 
@@ -169,6 +174,86 @@ async def send_instagram_image(recipient_id: str, image_url: str):
         return False
 
 
+async def load_or_create_conversation_state(sender_id: str, persona_id: str = None):
+    """Load existing ConversationState or create new one."""
+    async with async_session() as session:
+        result = await session.execute(
+            select(ConversationState).where(ConversationState.sender_id == sender_id)
+        )
+        state = result.scalar_one_or_none()
+        if not state:
+            state = ConversationState(
+                sender_id=sender_id,
+                persona_id=persona_id,
+                channel="instagram",
+                messages=[],
+                score_history=[],
+                signals=[],
+                products_mentioned=[],
+            )
+            session.add(state)
+            await session.commit()
+            await session.refresh(state)
+        return state.id, state.messages or [], state.products_mentioned or []
+
+
+async def update_conversation_state(
+    sender_id: str,
+    new_messages: list,
+    scoring: dict,
+    products_added: list = None,
+):
+    """Append new messages, update scoring, append to score history."""
+    async with async_session() as session:
+        result = await session.execute(
+            select(ConversationState).where(ConversationState.sender_id == sender_id)
+        )
+        state = result.scalar_one_or_none()
+        if not state:
+            return
+
+        # Append messages
+        existing_messages = list(state.messages or [])
+        for m in new_messages:
+            existing_messages.append({
+                "role": m["role"],
+                "content": m["content"],
+                "timestamp": datetime.utcnow().isoformat(),
+            })
+        state.messages = existing_messages[-100:]  # keep last 100
+
+        # Update scoring snapshot
+        state.intent_score = scoring.get("intent_score", 0)
+        state.stage = scoring.get("stage", "awareness")
+        state.signals = scoring.get("signals", [])
+        state.next_action = scoring.get("next_action", "")
+        state.score_breakdown = scoring.get("score_breakdown", "")
+
+        # Append to score history
+        history = list(state.score_history or [])
+        history.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "intent_score": scoring.get("intent_score", 0),
+            "stage": scoring.get("stage", "awareness"),
+            "trigger_message": (new_messages[-1]["content"] if new_messages else "")[:200],
+        })
+        state.score_history = history[-50:]  # keep last 50
+
+        # Update product mentions
+        if products_added:
+            existing = list(state.products_mentioned or [])
+            for p in products_added:
+                if p not in existing:
+                    existing.append(p)
+            state.products_mentioned = existing[-50:]
+
+        state.message_count = (state.message_count or 0) + len(new_messages)
+        state.last_message_at = datetime.utcnow()
+        state.updated_at = datetime.utcnow()
+
+        await session.commit()
+
+
 async def get_active_persona():
     """Get the most recently updated persona object."""
     try:
@@ -209,7 +294,31 @@ async def get_reply(sender_id, user_msg):
             products_text += f"ID: {p['id']}\nName: {p['name']}\nPrice: {p['price']}\nDescription: {p['description']}\nTags: {', '.join(p['tags'])}\n\n"
         products_text += "\nYou MUST respond in this JSON format: {\"message\": \"your reply text\", \"recommend_product_ids\": [\"id1\", \"id2\"]}\nRULES:\n- If the customer asks about ANY product, category, or shows interest, you MUST include 1-3 matching product IDs in recommend_product_ids.\n- Describe the recommended products briefly in your message text.\n- NEVER say you cannot send images or pictures. The system sends them automatically when you include IDs.\n- Only use an empty recommend_product_ids [] for pure greetings like 'hi' or 'hello' with zero product context."
 
-    full_system_prompt = system_prompt + products_text
+    # Load conversation state and score intent
+    state_id, state_messages, state_products = await load_or_create_conversation_state(sender_id, persona_id)
+    scoring_messages = state_messages + [{"role": "user", "content": user_msg}]
+    scoring = await score_conversation(scoring_messages, state_products)
+
+    scoring_context = f"""
+
+## CURRENT CUSTOMER STATE (use this to tailor your reply)
+Intent Score: {scoring['intent_score']}/100
+Stage: {scoring['stage']}
+Recommended tone: {scoring['recommended_tone']}
+Next action: {scoring['next_action']}
+Signals detected: {', '.join(scoring['signals']) if scoring['signals'] else 'none yet'}
+Analysis: {scoring['score_breakdown']}
+
+STRATEGY BASED ON SCORE:
+- If score 0-20: be welcoming and informative, introduce the business, ask what they're looking for
+- If score 21-40: show interest in their needs, offer relevant product categories, be consultative
+- If score 41-60: actively recommend specific products, send images, highlight features and benefits
+- If score 61-80: address specifics (price, availability, shipping), create gentle urgency, ask for commitment softly
+- If score 81-100: focus on closing — ask for the order, explain checkout, remove friction, be direct
+- If stage is "objection": acknowledge their concern, address it directly with facts, reassure them
+"""
+
+    full_system_prompt = system_prompt + products_text + scoring_context
     messages = [{"role": "system", "content": full_system_prompt}] + history
 
     try:
@@ -244,6 +353,20 @@ async def get_reply(sender_id, user_msg):
                 reply_text = reply_raw
 
         history.append({"role": "assistant", "content": reply_text})
+
+        # Update conversation state with scoring
+        try:
+            await update_conversation_state(
+                sender_id=sender_id,
+                new_messages=[
+                    {"role": "user", "content": user_msg},
+                    {"role": "assistant", "content": reply_text},
+                ],
+                scoring=scoring,
+                products_added=recommend_product_ids if recommend_product_ids else [],
+            )
+        except Exception as e:
+            print(f"State update error (non-fatal): {e}")
 
         # Send product images if recommended
         if recommend_product_ids:
