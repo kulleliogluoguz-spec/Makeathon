@@ -72,7 +72,20 @@ export default function SettingsPage() {
 
       {/* Working Hours */}
       <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>Working Hours</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Working Hours</h2>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', cursor: 'pointer' }}>
+            <span style={{ color: settings.outside_hours_enabled ? '#10b981' : '#94a3b8', fontWeight: 500 }}>
+              {settings.outside_hours_enabled ? 'Active' : 'Disabled (24/7)'}
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.outside_hours_enabled}
+              onChange={(e) => setSettings({ ...settings, outside_hours_enabled: e.target.checked })}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+          </label>
+        </div>
 
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>TIMEZONE</label>
@@ -89,6 +102,7 @@ export default function SettingsPage() {
           </select>
         </div>
 
+        <div style={{ opacity: settings.outside_hours_enabled ? 1 : 0.3, pointerEvents: settings.outside_hours_enabled ? 'auto' : 'none' }}>
         {DAYS.map(({ key, label }) => {
           const day = settings.working_hours?.[key] || { start: '09:00', end: '18:00', enabled: false };
           return (
@@ -117,6 +131,7 @@ export default function SettingsPage() {
             </div>
           );
         })}
+        </div>
       </section>
 
       {/* Outside Hours Message */}

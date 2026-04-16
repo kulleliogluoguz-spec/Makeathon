@@ -20,6 +20,7 @@ from app.api.customers import router as customers_router
 from app.api.categories import router as categories_router
 from app.services.category_seeder import seed_builtin_categories
 from app.api.settings import router as settings_router
+from app.api.persona_templates import router as templates_router
 
 # Create media directory
 Path("media").mkdir(exist_ok=True)
@@ -68,6 +69,7 @@ app.include_router(conversations_api_router, prefix="/api/v1/dashboard", tags=["
 app.include_router(customers_router, prefix="/api/v1", tags=["Customers"])
 app.include_router(categories_router, prefix="/api/v1", tags=["Categories"])
 app.include_router(settings_router, prefix="/api/v1", tags=["Settings"])
+app.include_router(templates_router, prefix="/api/v1", tags=["Templates"])
 
 
 @app.get("/health")
