@@ -20,8 +20,7 @@ MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
 async def parse_pdf(file_path: str, base_url: str) -> List[Dict]:
     """Extract products from a PDF file.
-    Uses pymupdf for text and image extraction.
-    Then sends extracted content to gpt-4.1-nano to structure as products.
+    Renders each page at high DPI for clean product images (masks applied, white background).
     """
     try:
         import fitz  # pymupdf
@@ -30,53 +29,29 @@ async def parse_pdf(file_path: str, base_url: str) -> List[Dict]:
 
     doc = fitz.open(file_path)
     all_text = ""
-    extracted_images = []  # list of (page_num, image_path, image_url)
+    page_images = []  # one image per page
 
     for page_num, page in enumerate(doc):
         all_text += f"\n--- PAGE {page_num + 1} ---\n{page.get_text()}"
 
-        # Extract images from page
-        for img_index, img in enumerate(page.get_images(full=True)):
-            xref = img[0]
-            base_image = doc.extract_image(xref)
-            image_bytes = base_image["image"]
+        # Render page at 300 DPI (default is 72, so zoom = 300/72 ≈ 4.17)
+        zoom = 300 / 72
+        mat = fitz.Matrix(zoom, zoom)
+        pix = page.get_pixmap(matrix=mat, alpha=False)  # alpha=False forces white background
 
-            try:
-                pil_img = Image.open(BytesIO(image_bytes))
+        filename = f"{uuid.uuid4().hex}.jpg"
+        local_path = MEDIA_DIR / filename
 
-                # Skip tiny images (likely icons or noise)
-                if pil_img.width < 100 or pil_img.height < 100:
-                    continue
+        # Save as JPG with high quality
+        pix.save(str(local_path), output="jpg", jpg_quality=95)
 
-                # Convert to RGBA to handle transparency, then flatten on white background
-                if pil_img.mode in ('RGBA', 'LA', 'P'):
-                    pil_img = pil_img.convert('RGBA')
-                    white_bg = Image.new('RGB', pil_img.size, (255, 255, 255))
-                    white_bg.paste(pil_img, mask=pil_img.split()[-1])
-                    pil_img = white_bg
-                else:
-                    pil_img = pil_img.convert('RGB')
-
-                # Upscale small images for better quality on Instagram
-                if pil_img.width < 600:
-                    scale = 600 / pil_img.width
-                    new_size = (int(pil_img.width * scale), int(pil_img.height * scale))
-                    pil_img = pil_img.resize(new_size, Image.LANCZOS)
-
-                filename = f"{uuid.uuid4().hex}.jpg"
-                local_path = MEDIA_DIR / filename
-                pil_img.save(local_path, "JPEG", quality=95, optimize=True)
-            except Exception as e:
-                print(f"Image process error: {e}")
-                continue
-
-            image_url = f"{base_url.rstrip('/')}/media/products/{filename}"
-            extracted_images.append({
-                "page": page_num + 1,
-                "local_path": str(local_path),
-                "url": image_url,
-                "index": img_index,
-            })
+        image_url = f"{base_url.rstrip('/')}/media/products/{filename}"
+        page_images.append({
+            "page": page_num + 1,
+            "local_path": str(local_path),
+            "url": image_url,
+            "index": page_num,
+        })
 
     doc.close()
 
@@ -84,8 +59,8 @@ async def parse_pdf(file_path: str, base_url: str) -> List[Dict]:
     if len(all_text) > 100000:
         all_text = all_text[:100000]
 
-    # Ask gpt-4.1-nano to structure products
-    products = await extract_products_with_llm(all_text, extracted_images)
+    # Ask gpt-4.1-nano to structure products. Each product will be matched to the page it appears on.
+    products = await extract_products_with_llm(all_text, page_images)
 
     return products
 
@@ -112,9 +87,10 @@ async def extract_products_with_llm(raw_content: str, images: List[Dict]) -> Lis
 
     images_summary = ""
     if images:
-        images_summary = f"\n\n{len(images)} images were extracted from the catalog. Image URLs in order of appearance:\n"
+        images_summary = f"\n\n{len(images)} page images were rendered. Each page has ONE image representing it:\n"
         for i, img in enumerate(images[:50]):
-            images_summary += f"[{i}] page {img['page']}: {img['url']}\n"
+            images_summary += f"[{i}] Page {img['page']}\n"
+        images_summary += "\nFor each product you extract, set image_index to the page number MINUS 1 where it appears. For example, a product on page 3 has image_index = 2."
 
     system_prompt = (
         "You are a catalog parser. Extract every product from the provided catalog content. "
