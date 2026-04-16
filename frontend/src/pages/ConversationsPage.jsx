@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { t } from '../lib/i18n';
 import { authFetch, getUser } from '../lib/auth';
+import { resetUnread } from '../lib/notifications';
 
 const STAGE_COLORS = {
   awareness: '#94a3b8',
@@ -94,6 +95,7 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     fetch('/api/v1/categories/').then(r => r.json()).then(setAllCategories).catch(() => {});
+    resetUnread();
   }, []);
 
   const loadConversations = async () => {

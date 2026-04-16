@@ -7,3 +7,4 @@ from app.models.business_settings import BusinessSettings  # noqa
 from app.models.csat import CSATResponse  # noqa
 from app.models.quick_reply import QuickReply  # noqa
 from app.models.user import User  # noqa
+from app.models.team import Team  # noqa

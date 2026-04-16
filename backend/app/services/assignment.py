@@ -6,9 +6,28 @@ from app.models.user import User
 from app.models.conversation_state import ConversationState
 
 
-async def get_next_agent() -> str:
-    """Get the agent with fewest active conversations for round-robin assignment."""
+async def get_next_agent(team_id: str = "") -> str:
+    """Get the agent with fewest active conversations. If team_id given, pick from that team only."""
     async with async_session() as session:
+        if team_id:
+            from app.models.team import Team
+            team_result = await session.execute(select(Team).where(Team.id == team_id))
+            team = team_result.scalar_one_or_none()
+            if team and team.member_ids:
+                result = await session.execute(
+                    select(User).where(User.id.in_(team.member_ids), User.is_active == True)
+                )
+                agents = result.scalars().all()
+                if agents:
+                    agent_loads = {}
+                    for agent in agents:
+                        conv_result = await session.execute(
+                            select(func.count()).where(ConversationState.assigned_to == agent.id)
+                        )
+                        agent_loads[agent.id] = conv_result.scalar() or 0
+                    return min(agent_loads, key=agent_loads.get)
+
+        # Default: pick from all agents
         result = await session.execute(
             select(User).where(User.is_active == True, User.role == "agent")
         )

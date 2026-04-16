@@ -30,7 +30,7 @@ TEMPLATES = [
             "vocabulary_level": "simple",
             "sentence_length": "short",
             "tone_description": "Genuinely excited about helping customers find what they need. Never pushy \u2014 instead, creates enthusiasm around the product.",
-            "language": "tr",
+
             "example_phrases": [
                 "Merhaba! Size nas\u0131l yard\u0131mc\u0131 olabilirim?",
                 "Harika bir se\u00e7im! Bu \u00fcr\u00fcn \u00e7ok pop\u00fcler.",
@@ -123,7 +123,7 @@ TEMPLATES = [
             "vocabulary_level": "professional",
             "sentence_length": "medium",
             "tone_description": "Calm and reassuring. Conveys competence and control. The customer should feel that their issue is in good hands.",
-            "language": "tr",
+
             "example_phrases": [
                 "Sorununuzu anl\u0131yorum, hemen \u00e7\u00f6z\u00fcm \u00fcretelim.",
                 "Bu durumu ad\u0131m ad\u0131m birlikte \u00e7\u00f6zelim.",
@@ -216,7 +216,7 @@ TEMPLATES = [
             "vocabulary_level": "simple",
             "sentence_length": "short",
             "tone_description": "Fun, energetic, and authentic. Like chatting with your stylish best friend who happens to work at your favorite brand. Never salesy, always genuine.",
-            "language": "tr",
+
             "example_phrases": [
                 "Heyy! Ho\u015f geldin",
                 "Bu par\u00e7a tam sana g\u00f6re, yemin ederim",

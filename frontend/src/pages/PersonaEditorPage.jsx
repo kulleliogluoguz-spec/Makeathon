@@ -208,13 +208,6 @@ export default function PersonaEditorPage() {
               <Field label="Display Name"><input value={form.display_name || ''} onChange={(e) => set('display_name', e.target.value)} className={inputCls} /></Field>
               <Field label="Role Title"><input value={form.role_title || ''} onChange={(e) => set('role_title', e.target.value)} className={inputCls} /></Field>
               <Field label="Company Name"><input value={form.company_name || ''} onChange={(e) => set('company_name', e.target.value)} className={inputCls} /></Field>
-              <Field label="Language">
-                <select value={form.language || 'tr'} onChange={(e) => set('language', e.target.value)} className={inputCls}>
-                  <option value="tr">Turkish</option>
-                  <option value="en">English</option>
-                  <option value="de">German</option>
-                </select>
-              </Field>
             </div>
             <Field label="Description"><textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={2} className={inputCls} /></Field>
             <Field label="Background Story"><textarea value={form.background_story || ''} onChange={(e) => set('background_story', e.target.value)} rows={4} className={inputCls} /></Field>

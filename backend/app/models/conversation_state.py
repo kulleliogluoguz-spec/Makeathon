@@ -41,6 +41,7 @@ class ConversationState(Base):
 
     # Assignment & Hybrid Mode
     assigned_to = Column(String, default="")
+    assigned_team = Column(String, default="")
     response_mode = Column(String, default="ai_auto")  # "ai_auto", "ai_suggest", "human_only"
     pending_reply = Column(Text, default="")
     pending_product_ids = Column(JSON, default=list)

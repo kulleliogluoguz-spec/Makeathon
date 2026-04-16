@@ -394,20 +394,26 @@ async def generate_livechat_reply(session_id: str, persona_id: str, user_message
             qr_result = await session.execute(sel3(QuickReply))
             qr_list = qr_result.scalars().all()
             if qr_list:
-                quick_replies_text = "\n\n## QUICK REPLY TEMPLATES\nUse these pre-approved answers when the customer asks about these topics. Use the exact content, do not make up different information:\n\n"
+                quick_replies_text = "\n\n## PREDEFINED Q&A\nBelow are predefined question-answer pairs. When the customer asks about any of these topics, use the provided answer as your source of truth. IMPORTANT: The answers below may be written in a different language than the customer is using. You MUST translate the answer into the customer's language while keeping the exact same meaning and information. Do NOT change the facts — only translate.\n\n"
                 for qr in qr_list:
-                    quick_replies_text += f"Topic: {qr.title}\nKeywords: {qr.keywords}\nAnswer: {qr.content}\n\n"
+                    quick_replies_text += f"QUESTION: {qr.title}\nANSWER: {qr.content}\n\n"
     except Exception as e:
         print(f"Quick replies load error: {e}")
 
-    language_instruction = "\n\nCRITICAL LANGUAGE RULE: You MUST detect the language the customer is writing in and respond in EXACTLY the same language. If they write Turkish, respond in Turkish. If German, respond in German. If English, respond in English. If French, respond in French. NEVER switch languages unless the customer does. This is your highest priority rule.\n\n"
-    full_prompt = language_instruction + system_prompt + products_text + scoring_context + quick_replies_text
+    language_instruction = "\n\n=== ABSOLUTE LANGUAGE RULE (OVERRIDE EVERYTHING ABOVE) ===\nYou MUST respond in the EXACT SAME language the customer's LAST message is written in. Detect the language of their latest message and match it precisely. If their last message is in English, you respond ONLY in English. If Turkish, ONLY Turkish. If German, ONLY German. This rule overrides ALL other instructions including the persona language setting. NEVER respond in a different language than the customer's last message. This is NON-NEGOTIABLE.\n==="
+    full_prompt = system_prompt + products_text + scoring_context + quick_replies_text + language_instruction
 
     # Call LLM
     try:
+        last_user_msg = ""
+        for m in reversed(history):
+            if m.get("role") == "user":
+                last_user_msg = m.get("content", "")
+                break
+        language_reminder = {"role": "user", "content": f"[SYSTEM NOTE: The customer's last message is: \"{last_user_msg}\". You MUST reply in the SAME language as this message. If this message is in English, reply in English. If Turkish, reply in Turkish. If German, reply in German. Detect the language and match it exactly.]"}
         messages = [{"role": "system", "content": full_prompt}] + [
             {"role": m["role"], "content": m["content"]} for m in history[-20:]
-        ]
+        ] + [language_reminder]
 
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
