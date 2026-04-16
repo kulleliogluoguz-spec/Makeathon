@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Catalogs
     PUBLIC_BASE_URL: str = ""
 
+    # Messenger
+    MESSENGER_PAGE_ACCESS_TOKEN: str = ""
+    MESSENGER_VERIFY_TOKEN: str = "bigm_verify_123"
+
     class Config:
         env_file = ".env"
 
