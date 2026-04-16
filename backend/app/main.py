@@ -24,6 +24,7 @@ from app.api.persona_templates import router as templates_router
 from app.api.conversation_export import router as export_router
 from app.api.livechat import router as livechat_router
 from app.api.messenger import router as messenger_router
+from app.api.analytics import router as analytics_router
 
 # Create media directory
 Path("media").mkdir(exist_ok=True)
@@ -76,6 +77,7 @@ app.include_router(templates_router, prefix="/api/v1", tags=["Templates"])
 app.include_router(export_router, prefix="/api/v1/dashboard", tags=["Export"])
 app.include_router(livechat_router, tags=["LiveChat"])
 app.include_router(messenger_router, prefix="/api/v1", tags=["Messenger"])
+app.include_router(analytics_router, prefix="/api/v1", tags=["Analytics"])
 
 
 @app.get("/health")
