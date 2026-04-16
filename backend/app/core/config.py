@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     CSAT_ENABLED: str = "true"
     CSAT_DELAY_MINUTES: str = "30"
 
+    # Auth
+    JWT_SECRET: str = "change-this-to-a-long-random-string-abc123xyz789"
+
     class Config:
         env_file = ".env"
 

@@ -139,6 +139,10 @@ const translations = {
     qr_used: "Used",
     qr_keywords: "Keywords",
     qr_button: "Quick Replies",
+    auth_sign_in: "Sign In",
+    auth_register: "Create Account",
+    auth_logout: "Logout",
+    nav_team: "Team",
   },
   tr: {
     nav_personas: "Personalar",
@@ -280,6 +284,10 @@ const translations = {
     qr_used: "Kullanıldı",
     qr_keywords: "Anahtar kelimeler",
     qr_button: "Hızlı Yanıtlar",
+    auth_sign_in: "Giriş Yap",
+    auth_register: "Hesap Oluştur",
+    auth_logout: "Çıkış",
+    nav_team: "Ekip",
   },
 };
 
