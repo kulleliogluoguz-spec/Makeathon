@@ -54,6 +54,8 @@ export default function ConversationsPage() {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [csatData, setCsatData] = useState(null);
+  const [quickReplies, setQuickReplies] = useState([]);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [loading, setLoading] = useState(true);
   const [allCategories, setAllCategories] = useState([]);
   const [activeTag, setActiveTag] = useState('');
@@ -111,6 +113,7 @@ export default function ConversationsPage() {
       setDetail(data);
       const csatResp = await fetch(`/api/v1/csat/conversation/${id}`);
       setCsatData(await csatResp.json());
+      fetch('/api/v1/quick-replies/').then(r => r.json()).then(setQuickReplies).catch(() => {});
     } catch (e) { console.error(e); }
   };
 
@@ -354,7 +357,35 @@ export default function ConversationsPage() {
                         color: '#374151',
                       }}
                     >Export PDF</button>
+                    <button
+                      onClick={() => setShowQuickReplies(!showQuickReplies)}
+                      style={{
+                        padding: '3px 10px', fontSize: '0.7rem', background: showQuickReplies ? '#000' : '#fff',
+                        color: showQuickReplies ? '#fff' : '#374151',
+                        border: '1px solid #e5e7eb', borderRadius: '9999px', cursor: 'pointer',
+                      }}
+                    >{t('qr_button')}</button>
                   </div>
+                  {showQuickReplies && quickReplies.length > 0 && (
+                    <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem', maxHeight: '200px', overflowY: 'auto' }}>
+                      {quickReplies.map((qr) => (
+                        <div
+                          key={qr.id}
+                          onClick={async () => {
+                            navigator.clipboard.writeText(qr.content);
+                            await fetch(`/api/v1/quick-replies/${qr.id}/use`, { method: 'POST' });
+                            alert('Copied to clipboard: ' + qr.title);
+                          }}
+                          style={{ padding: '8px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', fontSize: '0.8rem' }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{ fontWeight: 600, marginBottom: '2px' }}>{qr.title}</div>
+                          <div style={{ color: '#6b7280', fontSize: '0.75rem' }}>{qr.content.slice(0, 100)}{qr.content.length > 100 ? '...' : ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem' }}>
                     {(detail.messages || []).map((m, i) => (
                       <div key={i} style={{

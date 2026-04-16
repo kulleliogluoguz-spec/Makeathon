@@ -411,7 +411,22 @@ STRATEGY BASED ON SCORE:
 - If stage is "objection": acknowledge their concern, address it directly with facts, reassure them
 """
 
-    full_system_prompt = system_prompt + products_text + scoring_context
+    # Load quick reply templates
+    quick_replies_text = ""
+    try:
+        from app.models.quick_reply import QuickReply
+        async with async_session() as session:
+            qr_result = await session.execute(select(QuickReply))
+            qr_list = qr_result.scalars().all()
+            if qr_list:
+                quick_replies_text = "\n\n## QUICK REPLY TEMPLATES\nUse these pre-approved answers when the customer asks about these topics. Use the exact content, do not make up different information:\n\n"
+                for qr in qr_list:
+                    quick_replies_text += f"Topic: {qr.title}\nKeywords: {qr.keywords}\nAnswer: {qr.content}\n\n"
+    except Exception as e:
+        print(f"Quick replies load error: {e}")
+
+    language_instruction = "\n\nCRITICAL LANGUAGE RULE: You MUST detect the language the customer is writing in and respond in EXACTLY the same language. If they write Turkish, respond in Turkish. If German, respond in German. If English, respond in English. If French, respond in French. NEVER switch languages unless the customer does. This is your highest priority rule.\n\n"
+    full_system_prompt = language_instruction + system_prompt + products_text + scoring_context + quick_replies_text
     print(f"System prompt length: {len(full_system_prompt)}, products loaded: {len(products)}")
     messages = [{"role": "system", "content": full_system_prompt}] + history
 

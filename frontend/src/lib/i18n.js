@@ -132,6 +132,13 @@ const translations = {
     csat_total_responses: "Total Responses",
     csat_no_ratings: "No ratings yet",
     csat_customer_rating: "CUSTOMER RATING",
+    qr_title: "Quick Reply Templates",
+    qr_subtitle: "Pre-written answers for common questions. AI uses these automatically.",
+    qr_add: "+ Add Template",
+    qr_no_templates: "No templates yet. Add common answers like return policy, shipping info, working hours.",
+    qr_used: "Used",
+    qr_keywords: "Keywords",
+    qr_button: "Quick Replies",
   },
   tr: {
     nav_personas: "Personalar",
@@ -266,6 +273,13 @@ const translations = {
     csat_total_responses: "Toplam Değerlendirme",
     csat_no_ratings: "Henüz değerlendirme yok",
     csat_customer_rating: "MÜŞTERİ DEĞERLENDİRMESİ",
+    qr_title: "Hızlı Yanıt Şablonları",
+    qr_subtitle: "Sık sorulan sorular için hazır cevaplar. AI bunları otomatik kullanır.",
+    qr_add: "+ Şablon Ekle",
+    qr_no_templates: "Henüz şablon yok. İade politikası, kargo bilgisi, çalışma saatleri gibi yaygın cevaplar ekleyin.",
+    qr_used: "Kullanıldı",
+    qr_keywords: "Anahtar kelimeler",
+    qr_button: "Hızlı Yanıtlar",
   },
 };
 

@@ -19,6 +19,15 @@ export default function SettingsPage() {
   const [personas, setPersonas] = useState([]);
   const [selectedPersona, setSelectedPersona] = useState('');
   const [copied, setCopied] = useState(false);
+  const [quickReplies, setQuickReplies] = useState([]);
+  const [showQRForm, setShowQRForm] = useState(false);
+  const [qrForm, setQrForm] = useState({ title: '', content: '', category: '', keywords: '' });
+  const [editingQR, setEditingQR] = useState(null);
+
+  const loadQR = async () => {
+    fetch('/api/v1/quick-replies/').then(r => r.json()).then(setQuickReplies).catch(() => {});
+  };
+  useEffect(() => { loadQR(); }, []);
 
   useEffect(() => {
     fetch('/api/v1/personas/').then(r => r.json()).then(setPersonas).catch(() => {});
@@ -252,6 +261,76 @@ export default function SettingsPage() {
         <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
           Currently active on: Instagram, Messenger. LiveChat widget shows rating UI automatically.
         </p>
+      </section>
+
+      {/* Quick Replies */}
+      <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>{t('qr_title')}</h2>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>{t('qr_subtitle')}</p>
+          </div>
+          <button
+            onClick={() => { setQrForm({ title: '', content: '', category: '', keywords: '' }); setEditingQR(null); setShowQRForm(true); }}
+            style={{ padding: '6px 14px', background: '#000', color: '#fff', border: 'none', borderRadius: '9999px', fontSize: '0.8rem', cursor: 'pointer' }}
+          >{t('qr_add')}</button>
+        </div>
+
+        {quickReplies.length === 0 ? (
+          <div style={{ color: '#9ca3af', fontSize: '0.875rem', padding: '1rem', textAlign: 'center', border: '1px dashed #e5e7eb', borderRadius: '0.5rem' }}>
+            {t('qr_no_templates')}
+          </div>
+        ) : (
+          quickReplies.map((qr) => (
+            <div key={qr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', marginBottom: '0.5rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{qr.title}</div>
+                <div style={{ fontSize: '0.8rem', color: '#374151', marginTop: '2px' }}>{qr.content.slice(0, 120)}{qr.content.length > 120 ? '...' : ''}</div>
+                <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '4px' }}>
+                  {qr.category && `${qr.category} · `}{t('qr_keywords')}: {qr.keywords || 'none'} · {t('qr_used')} {qr.use_count}x
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '4px', marginLeft: '0.5rem' }}>
+                <button onClick={() => { setQrForm({ title: qr.title, content: qr.content, category: qr.category, keywords: qr.keywords }); setEditingQR(qr.id); setShowQRForm(true); }}
+                  style={{ padding: '3px 10px', fontSize: '0.7rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '9999px', cursor: 'pointer' }}>Edit</button>
+                <button onClick={async () => { if (confirm('Delete?')) { await fetch(`/api/v1/quick-replies/${qr.id}`, { method: 'DELETE' }); loadQR(); } }}
+                  style={{ padding: '3px 10px', fontSize: '0.7rem', background: '#fff', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '9999px', cursor: 'pointer' }}>Delete</button>
+              </div>
+            </div>
+          ))
+        )}
+
+        {showQRForm && (
+          <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', background: '#f9fafb' }}>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <input type="text" placeholder="Title (e.g. Return Policy)" value={qrForm.title} onChange={(e) => setQrForm({ ...qrForm, title: e.target.value })}
+                style={{ width: '100%', padding: '6px 10px', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', outline: 'none' }} />
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <textarea placeholder="Full reply text..." value={qrForm.content} onChange={(e) => setQrForm({ ...qrForm, content: e.target.value })} rows={4}
+                style={{ width: '100%', padding: '6px 10px', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', outline: 'none', resize: 'vertical' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <input type="text" placeholder="Category (optional)" value={qrForm.category} onChange={(e) => setQrForm({ ...qrForm, category: e.target.value })}
+                style={{ flex: 1, padding: '6px 10px', fontSize: '0.8rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', outline: 'none' }} />
+              <input type="text" placeholder="Keywords: return,refund,exchange" value={qrForm.keywords} onChange={(e) => setQrForm({ ...qrForm, keywords: e.target.value })}
+                style={{ flex: 1, padding: '6px 10px', fontSize: '0.8rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', outline: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button onClick={async () => {
+                const method = editingQR ? 'PATCH' : 'POST';
+                const url = editingQR ? `/api/v1/quick-replies/${editingQR}` : '/api/v1/quick-replies/';
+                await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(qrForm) });
+                setShowQRForm(false); setEditingQR(null); loadQR();
+              }} disabled={!qrForm.title || !qrForm.content}
+                style={{ padding: '6px 16px', background: '#000', color: '#fff', border: 'none', borderRadius: '9999px', fontSize: '0.8rem', cursor: 'pointer', opacity: (!qrForm.title || !qrForm.content) ? 0.4 : 1 }}>
+                {editingQR ? 'Save' : 'Create'}
+              </button>
+              <button onClick={() => { setShowQRForm(false); setEditingQR(null); }}
+                style={{ padding: '6px 16px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '9999px', fontSize: '0.8rem', cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Live Chat Widget */}

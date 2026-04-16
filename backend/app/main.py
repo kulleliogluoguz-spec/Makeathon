@@ -26,6 +26,7 @@ from app.api.livechat import router as livechat_router
 from app.api.messenger import router as messenger_router
 from app.api.analytics import router as analytics_router
 from app.api.csat import router as csat_router
+from app.api.quick_replies import router as quick_replies_router
 
 # Create media directory
 Path("media").mkdir(exist_ok=True)
@@ -80,6 +81,7 @@ app.include_router(livechat_router, tags=["LiveChat"])
 app.include_router(messenger_router, prefix="/api/v1", tags=["Messenger"])
 app.include_router(analytics_router, prefix="/api/v1", tags=["Analytics"])
 app.include_router(csat_router, prefix="/api/v1", tags=["CSAT"])
+app.include_router(quick_replies_router, prefix="/api/v1", tags=["Quick Replies"])
 
 
 @app.get("/health")
