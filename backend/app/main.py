@@ -5,13 +5,20 @@ A comprehensive voice agent system for company recognition and customer interact
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api import agents, workflows, conversations, personas, companies, knowledge_base
 from app.api.voices import router as voices_router
 from app.api.voice_builder import router as voice_builder_router
+from app.api.catalogs import router as catalogs_router
+
+# Create media directory
+Path("media").mkdir(exist_ok=True)
+Path("media/products").mkdir(parents=True, exist_ok=True)
 
 
 @asynccontextmanager
@@ -31,6 +38,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.mount("/media", StaticFiles(directory="media"), name="media")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -48,6 +57,7 @@ app.include_router(companies.router, prefix="/api/v1/companies", tags=["Companie
 app.include_router(knowledge_base.router, prefix="/api/v1/knowledge", tags=["Knowledge Base"])
 app.include_router(voices_router, prefix="/api/v1", tags=["Voices"])
 app.include_router(voice_builder_router, prefix="/api/v1/voice-builder", tags=["Voice Builder"])
+app.include_router(catalogs_router, prefix="/api/v1", tags=["Catalogs"])
 
 
 @app.get("/health")

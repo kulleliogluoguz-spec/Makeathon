@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     INSTAGRAM_ACCESS_TOKEN: str = "IGAANzFMVq5xtBZAFpkcVJqdEtCSmhpM080N2dJME9Xa1FENmdCb0ltQlFjSFhOdm1kN3BFejFxcHNHclZASUjVlWlR0RnlXeVkyRnktQ1c5eW9uMHM5a3VFeF91dWtmUXFHVWRObzA4M0RyNlhZAcm5KVzZAkODMyQklTUVRIV2EyWQZDZD"
     INSTAGRAM_VERIFY_TOKEN: str = "bigm_verify_123"
 
+    # Catalogs
+    PUBLIC_BASE_URL: str = ""
+
     class Config:
         env_file = ".env"
 

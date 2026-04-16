@@ -6,6 +6,7 @@ import Toggle from '../components/Toggle'
 import Modal from '../components/Modal'
 import VoiceBuilder from '../components/VoiceBuilder'
 import VoicePicker from '../components/VoicePicker'
+import CatalogManager from '../components/CatalogManager'
 import { getPersona, updatePersona, generatePrompt, previewPrompt, duplicatePersona, deletePersona } from '../lib/api'
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-400'
@@ -245,6 +246,11 @@ export default function PersonaEditorPage() {
                 setDirty(true)
               }}
             />
+          </Section>
+
+          {/* Product Catalogs */}
+          <Section id="section-catalogs" title="Product Catalogs" description="Upload product catalogs so the AI can recommend products during conversations.">
+            <CatalogManager personaId={id} />
           </Section>
 
           {/* Section 2: Personality Traits */}

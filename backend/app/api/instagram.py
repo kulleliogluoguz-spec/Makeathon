@@ -40,7 +40,8 @@ async def webhook(request: Request):
             if not text:
                 continue
             reply = await get_reply(sender, text)
-            await send_reply(sender, reply)
+            if reply is not None:
+                await send_reply(sender, reply)
     return {"status": "ok"}
 
 async def get_active_persona_prompt():
@@ -107,6 +108,83 @@ async def get_active_persona_prompt():
         return "You are a helpful assistant. Be concise and professional."
 
 
+async def get_products_for_persona(persona_id: str):
+    """Get all products from enabled catalogs assigned to this persona."""
+    try:
+        from app.core.database import async_session
+        from app.models.catalog_models import Catalog, Product
+        from sqlalchemy import select, and_
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Product).join(Catalog).where(
+                    and_(
+                        Catalog.persona_id == persona_id,
+                        Catalog.enabled == "true",
+                    )
+                )
+            )
+            products = result.scalars().all()
+            return [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "description": p.description,
+                    "price": p.price,
+                    "features": p.features or [],
+                    "tags": p.tags or [],
+                    "image_url": p.image_url,
+                }
+                for p in products
+            ]
+    except Exception as e:
+        print(f"Product load error: {e}")
+        return []
+
+
+async def send_instagram_image(recipient_id: str, image_url: str):
+    """Send an image attachment via Instagram Graph API."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                "https://graph.instagram.com/v21.0/me/messages",
+                headers={
+                    "Authorization": f"Bearer {ACCESS_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "recipient": {"id": recipient_id},
+                    "message": {
+                        "attachment": {
+                            "type": "image",
+                            "payload": {"url": image_url, "is_reusable": True},
+                        }
+                    },
+                },
+            )
+            print(f"IG Image [{resp.status_code}]: {image_url}")
+            return resp.status_code == 200
+    except Exception as e:
+        print(f"Send image error: {e}")
+        return False
+
+
+async def get_active_persona():
+    """Get the most recently updated persona object."""
+    try:
+        from app.core.database import async_session
+        from app.models.models import Persona
+        from sqlalchemy import select
+        async with async_session() as session:
+            result = await session.execute(
+                select(Persona).order_by(Persona.updated_at.desc()).limit(1)
+            )
+            return result.scalar_one_or_none()
+    except Exception as e:
+        print(f"Persona load error: {e}")
+        return None
+
+
 async def get_reply(sender_id, user_msg):
     if sender_id not in conversation_history:
         conversation_history[sender_id] = []
@@ -115,19 +193,68 @@ async def get_reply(sender_id, user_msg):
     if len(history) > 20:
         conversation_history[sender_id] = history[-20:]
         history = conversation_history[sender_id]
+
+    persona = await get_active_persona()
     system_prompt = await get_active_persona_prompt()
-    messages = [{"role": "system", "content": system_prompt}] + history
+
+    # Load products for this persona
+    persona_id = persona.id if persona else None
+    products = await get_products_for_persona(persona_id) if persona_id else []
+
+    # Build products context
+    products_text = ""
+    if products:
+        products_text = "\n\n## PRODUCT CATALOG\nYou have a product catalog. When you put product IDs in recommend_product_ids, the system will AUTOMATICALLY send the product images to the customer. You DO have the ability to show images — just include the IDs.\n\nAvailable products:\n\n"
+        for p in products:
+            products_text += f"ID: {p['id']}\nName: {p['name']}\nPrice: {p['price']}\nDescription: {p['description']}\nTags: {', '.join(p['tags'])}\n\n"
+        products_text += "\nYou MUST respond in this JSON format: {\"message\": \"your reply text\", \"recommend_product_ids\": [\"id1\", \"id2\"]}\nRULES:\n- If the customer asks about ANY product, category, or shows interest, you MUST include 1-3 matching product IDs in recommend_product_ids.\n- Describe the recommended products briefly in your message text.\n- NEVER say you cannot send images or pictures. The system sends them automatically when you include IDs.\n- Only use an empty recommend_product_ids [] for pure greetings like 'hi' or 'hello' with zero product context."
+
+    full_system_prompt = system_prompt + products_text
+    messages = [{"role": "system", "content": full_system_prompt}] + history
+
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "gpt-4.1-nano", "messages": messages, "temperature": 0.7, "max_tokens": 300},
+                json={
+                    "model": "gpt-4.1-nano",
+                    "messages": messages,
+                    "temperature": 0.7,
+                    "max_tokens": 300,
+                    **({"response_format": {"type": "json_object"}} if products else {}),
+                },
             )
             resp.raise_for_status()
-            reply = resp.json()["choices"][0]["message"]["content"]
-        history.append({"role": "assistant", "content": reply})
-        return reply
+            reply_raw = resp.json()["choices"][0]["message"]["content"]
+
+        # Parse product recommendations if products are available
+        reply_text = reply_raw
+        recommend_product_ids = []
+        if products:
+            print(f"LLM raw response: {reply_raw[:300]}")
+            try:
+                import json
+                parsed = json.loads(reply_raw)
+                reply_text = parsed.get("message", reply_raw)
+                recommend_product_ids = parsed.get("recommend_product_ids", [])
+                print(f"Parsed recommend_product_ids: {recommend_product_ids}")
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"JSON parse failed: {e}")
+                reply_text = reply_raw
+
+        history.append({"role": "assistant", "content": reply_text})
+
+        # Send product images if recommended
+        if recommend_product_ids:
+            await send_reply(sender_id, reply_text)
+            for pid in recommend_product_ids[:3]:
+                product = next((p for p in products if p["id"] == pid), None)
+                if product and product.get("image_url"):
+                    await send_instagram_image(sender_id, product["image_url"])
+            return None  # Already sent reply + images
+
+        return reply_text
     except Exception as e:
         print(f"LLM Error: {e}")
         return "Sorry, I am having a technical issue. Please try again!"
