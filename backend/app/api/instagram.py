@@ -8,6 +8,7 @@ from fastapi.responses import PlainTextResponse
 from app.services.intent_scorer import score_conversation
 from app.core.database import async_session
 from app.models.conversation_state import ConversationState
+from app.models.customer import Customer
 from sqlalchemy import select
 
 router = APIRouter()
@@ -44,6 +45,13 @@ async def webhook(request: Request):
             text = msg.get("text", "")
             if not text:
                 continue
+            # Create or update customer record
+            profile_name = None
+            try:
+                profile_name = event.get("sender", {}).get("username") or event.get("sender", {}).get("name")
+            except Exception:
+                pass
+            await upsert_customer_from_instagram(sender, profile_name)
             reply = await get_reply(sender, text)
             if reply is not None:
                 await send_reply(sender, reply)
@@ -172,6 +180,49 @@ async def send_instagram_image(recipient_id: str, image_url: str):
     except Exception as e:
         print(f"Send image error: {e}")
         return False
+
+
+async def upsert_customer_from_instagram(sender_id: str, profile_name: str = None):
+    """Create or update a Customer record for an Instagram sender."""
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(Customer).where(Customer.instagram_sender_id == sender_id)
+            )
+            customer = result.scalar_one_or_none()
+
+            if customer:
+                customer.last_contact_at = datetime.utcnow()
+                customer.updated_at = datetime.utcnow()
+                if profile_name and not customer.display_name:
+                    customer.display_name = profile_name
+                try:
+                    msgs = int(customer.total_messages or "0") + 1
+                except (ValueError, TypeError):
+                    msgs = 1
+                customer.total_messages = str(msgs)
+                await session.commit()
+                return customer.id
+
+            customer = Customer(
+                display_name=profile_name or "",
+                handle="",
+                source="instagram",
+                instagram_sender_id=sender_id,
+                tags=[],
+                custom_fields={},
+                notes="",
+                external_ids={},
+                last_contact_at=datetime.utcnow(),
+                total_messages="1",
+            )
+            session.add(customer)
+            await session.commit()
+            await session.refresh(customer)
+            return customer.id
+    except Exception as e:
+        print(f"Customer upsert error: {e}")
+        return None
 
 
 async def load_or_create_conversation_state(sender_id: str, persona_id: str = None):
