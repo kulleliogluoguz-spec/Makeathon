@@ -11,6 +11,8 @@ from app.services.business_hours import is_within_business_hours
 from app.core.database import async_session
 from app.models.conversation_state import ConversationState
 from app.models.customer import Customer
+from app.services.csat_sender import is_csat_response
+from app.models.csat import CSATResponse
 from sqlalchemy import select
 
 router = APIRouter()
@@ -54,6 +56,29 @@ async def webhook(request: Request):
             except Exception:
                 pass
             await upsert_customer_from_instagram(sender, profile_name)
+            # Check if this is a CSAT rating response
+            csat_rating = is_csat_response(text)
+            if csat_rating > 0:
+                try:
+                    async with async_session() as session:
+                        conv_result = await session.execute(
+                            select(ConversationState).where(ConversationState.sender_id == sender)
+                        )
+                        conv = conv_result.scalar_one_or_none()
+                        conv_id = conv.id if conv else ""
+                        csat = CSATResponse(
+                            conversation_id=conv_id,
+                            sender_id=sender,
+                            channel="instagram",
+                            rating=csat_rating,
+                        )
+                        session.add(csat)
+                        await session.commit()
+                    thank_msg = "Değerlendirmeniz için teşekkür ederiz! 🙏" if csat_rating >= 4 else "Geri bildiriminiz için teşekkür ederiz. Daha iyi olmak için çalışacağız! 🙏"
+                    await send_reply(sender, thank_msg)
+                    continue
+                except Exception as e:
+                    print(f"CSAT save error: {e}")
             # Check business hours
             is_open, closed_message = await is_within_business_hours()
             if not is_open and closed_message:
@@ -387,6 +412,7 @@ STRATEGY BASED ON SCORE:
 """
 
     full_system_prompt = system_prompt + products_text + scoring_context
+    print(f"System prompt length: {len(full_system_prompt)}, products loaded: {len(products)}")
     messages = [{"role": "system", "content": full_system_prompt}] + history
 
     try:
@@ -442,7 +468,10 @@ STRATEGY BASED ON SCORE:
             for pid in recommend_product_ids[:3]:
                 product = next((p for p in products if p["id"] == pid), None)
                 if product and product.get("image_url"):
+                    print(f"Sending image: {product['image_url']}")
                     await send_instagram_image(sender_id, product["image_url"])
+                else:
+                    print(f"Product not found or no image_url for pid: {pid}")
             return None  # Already sent reply + images
 
         return reply_text

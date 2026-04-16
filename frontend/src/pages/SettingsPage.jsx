@@ -236,6 +236,24 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* CSAT Survey */}
+      <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>{t('csat_title')}</h2>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', cursor: 'pointer' }}>
+            <span style={{ fontWeight: 500 }}>{t('settings_enabled')}</span>
+            <input type="checkbox" defaultChecked style={{ width: '18px', height: '18px' }} />
+          </label>
+        </div>
+        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+          After a conversation goes inactive, the system sends a satisfaction survey to the customer.
+          They reply with 1-5 stars. Results appear in Analytics and Conversation details.
+        </p>
+        <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+          Currently active on: Instagram, Messenger. LiveChat widget shows rating UI automatically.
+        </p>
+      </section>
+
       {/* Live Chat Widget */}
       <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('settings_livechat')}</h2>

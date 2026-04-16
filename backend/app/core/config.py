@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     MESSENGER_PAGE_ACCESS_TOKEN: str = ""
     MESSENGER_VERIFY_TOKEN: str = "bigm_verify_123"
 
+    # CSAT
+    CSAT_ENABLED: str = "true"
+    CSAT_DELAY_MINUTES: str = "30"
+
     class Config:
         env_file = ".env"
 

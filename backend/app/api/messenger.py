@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 import httpx
 from fastapi import APIRouter, Request, Query, HTTPException
 from fastapi.responses import PlainTextResponse
+from app.services.csat_sender import is_csat_response
+from app.models.csat import CSATResponse
 
 load_dotenv()
 
@@ -52,6 +54,34 @@ async def handle_webhook(request: Request):
             if not text:
                 await send_messenger_reply(sender_id, "I can currently only respond to text messages. Please type your question!")
                 continue
+
+            # Check if this is a CSAT rating response
+            csat_rating = is_csat_response(text)
+            if csat_rating > 0:
+                try:
+                    from app.core.database import async_session
+                    from sqlalchemy import select
+                    from app.models.conversation_state import ConversationState
+
+                    async with async_session() as session:
+                        conv_result = await session.execute(
+                            select(ConversationState).where(ConversationState.sender_id == sender_id)
+                        )
+                        conv = conv_result.scalar_one_or_none()
+                        conv_id = conv.id if conv else ""
+                        csat = CSATResponse(
+                            conversation_id=conv_id,
+                            sender_id=sender_id,
+                            channel="messenger",
+                            rating=csat_rating,
+                        )
+                        session.add(csat)
+                        await session.commit()
+                    thank_msg = "Thank you for your feedback! 🙏" if csat_rating >= 4 else "Thank you for your feedback. We'll work to improve! 🙏"
+                    await send_messenger_reply(sender_id, thank_msg)
+                    return {"status": "ok"}
+                except Exception as e:
+                    print(f"CSAT save error: {e}")
 
             # Check business hours
             try:

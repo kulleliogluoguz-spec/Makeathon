@@ -53,6 +53,7 @@ export default function ConversationsPage() {
   const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [csatData, setCsatData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [allCategories, setAllCategories] = useState([]);
   const [activeTag, setActiveTag] = useState('');
@@ -108,6 +109,8 @@ export default function ConversationsPage() {
       const resp = await fetch(`/api/v1/dashboard/conversations/${id}`);
       const data = await resp.json();
       setDetail(data);
+      const csatResp = await fetch(`/api/v1/csat/conversation/${id}`);
+      setCsatData(await csatResp.json());
     } catch (e) { console.error(e); }
   };
 
@@ -314,6 +317,27 @@ export default function ConversationsPage() {
                     {detail.next_action.replace(/_/g, ' ')}
                   </div>
                 </div>
+
+                {csatData && csatData.has_rating && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px' }}>{t('csat_customer_rating')}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <span key={s} style={{ fontSize: '1.25rem' }}>
+                          {s <= csatData.rating ? '\u2B50' : '\u2606'}
+                        </span>
+                      ))}
+                      <span style={{ marginLeft: '8px', fontSize: '0.875rem', fontWeight: 600 }}>
+                        {csatData.rating}/5
+                      </span>
+                    </div>
+                    {csatData.feedback && (
+                      <div style={{ fontSize: '0.8rem', color: '#374151', marginTop: '4px' }}>
+                        "{csatData.feedback}"
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>

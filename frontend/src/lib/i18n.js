@@ -126,6 +126,12 @@ const translations = {
     settings_language: "Platform Language",
     settings_language_desc: "Change the language of the entire platform interface.",
     common_loading: "Loading...",
+    csat_title: "Customer Satisfaction (CSAT)",
+    csat_avg_rating: "Average Rating",
+    csat_satisfaction_rate: "Satisfaction Rate",
+    csat_total_responses: "Total Responses",
+    csat_no_ratings: "No ratings yet",
+    csat_customer_rating: "CUSTOMER RATING",
   },
   tr: {
     nav_personas: "Personalar",
@@ -254,6 +260,12 @@ const translations = {
     settings_language: "Platform Dili",
     settings_language_desc: "Tüm platform arayüzünün dilini değiştirin.",
     common_loading: "Yükleniyor...",
+    csat_title: "Müşteri Memnuniyeti (CSAT)",
+    csat_avg_rating: "Ortalama Puan",
+    csat_satisfaction_rate: "Memnuniyet Oranı",
+    csat_total_responses: "Toplam Değerlendirme",
+    csat_no_ratings: "Henüz değerlendirme yok",
+    csat_customer_rating: "MÜŞTERİ DEĞERLENDİRMESİ",
   },
 };
 

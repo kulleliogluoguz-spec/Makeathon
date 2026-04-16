@@ -105,11 +105,12 @@ export default function AnalyticsPage() {
   const [categories, setCategories] = useState([]);
   const [daily, setDaily] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
+  const [csatStats, setCsatStats] = useState(null);
 
   const load = async () => {
     const p = `period=${period}`;
     try {
-      const [ov, ch, id, fn, ct, dl, tp] = await Promise.all([
+      const [ov, ch, id, fn, ct, dl, tp, cs] = await Promise.all([
         fetch(`/api/v1/analytics/overview?${p}`).then(r => r.json()),
         fetch(`/api/v1/analytics/channels?${p}`).then(r => r.json()),
         fetch(`/api/v1/analytics/intent-distribution?${p}`).then(r => r.json()),
@@ -117,6 +118,7 @@ export default function AnalyticsPage() {
         fetch(`/api/v1/analytics/categories?${p}`).then(r => r.json()),
         fetch(`/api/v1/analytics/daily-volume?days=30`).then(r => r.json()),
         fetch(`/api/v1/analytics/top-products?${p}`).then(r => r.json()),
+        fetch(`/api/v1/csat/stats?${p}`).then(r => r.json()),
       ]);
       setOverview(ov);
       setChannels(ch.channels || []);
@@ -125,6 +127,7 @@ export default function AnalyticsPage() {
       setCategories(ct.categories || []);
       setDaily(dl.daily || []);
       setTopProducts(tp.products || []);
+      setCsatStats(cs);
     } catch (e) { console.error(e); }
   };
 
@@ -240,6 +243,48 @@ export default function AnalyticsPage() {
           )}
         </div>
       </div>
+
+      {/* CSAT */}
+      {csatStats && (
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '1rem' }}>{t('csat_title')}</h3>
+          {csatStats.total_responses === 0 ? (
+            <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>{t('csat_no_ratings')}</div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
+                <div>
+                  <div style={{ fontSize: '2rem', fontWeight: 600 }}>{csatStats.average_rating}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{t('csat_avg_rating')}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '2rem', fontWeight: 600, color: '#10b981' }}>{csatStats.satisfaction_rate}%</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{t('csat_satisfaction_rate')}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '2rem', fontWeight: 600 }}>{csatStats.total_responses}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{t('csat_total_responses')}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '80px' }}>
+                {[1, 2, 3, 4, 5].map(star => {
+                  const count = csatStats.distribution[star] || 0;
+                  const max = Math.max(...Object.values(csatStats.distribution), 1);
+                  const pct = (count / max) * 100;
+                  const color = star >= 4 ? '#10b981' : star === 3 ? '#f59e0b' : '#ef4444';
+                  return (
+                    <div key={star} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 600, marginBottom: '2px' }}>{count}</div>
+                      <div style={{ width: '100%', background: color, borderRadius: '4px 4px 0 0', height: `${Math.max(pct, 5)}%` }} />
+                      <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '4px' }}>{star}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Daily Volume */}
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
