@@ -55,6 +55,31 @@ export default function ConversationsPage() {
   const [loading, setLoading] = useState(true);
   const [allCategories, setAllCategories] = useState([]);
   const [activeTag, setActiveTag] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+
+  const doSearch = async () => {
+    if (!searchQuery.trim()) { setSearchResults(null); return; }
+    setSearching(true);
+    try {
+      const resp = await fetch(`/api/v1/dashboard/conversations/search?q=${encodeURIComponent(searchQuery)}`);
+      setSearchResults(await resp.json());
+    } catch (e) { console.error(e); }
+    setSearching(false);
+  };
+
+  const highlightMatch = (text, query) => {
+    if (!query) return text;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return text;
+    const before = text.slice(0, idx);
+    const match = text.slice(idx, idx + query.length);
+    const after = text.slice(idx + query.length);
+    return (
+      <>{before}<span style={{ background: '#fef08a', fontWeight: 600 }}>{match}</span>{after}</>
+    );
+  };
 
   useEffect(() => {
     fetch('/api/v1/categories/').then(r => r.json()).then(setAllCategories).catch(() => {});
@@ -92,6 +117,38 @@ export default function ConversationsPage() {
         Live view of all customer conversations with intent scoring
       </p>
 
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+        <input
+          type="text"
+          placeholder="Search inside messages... (e.g. fiyat, iade)"
+          value={searchQuery}
+          onChange={(e) => { setSearchQuery(e.target.value); if (!e.target.value) setSearchResults(null); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
+          style={{
+            flex: 1, padding: '0.5rem 1rem', fontSize: '0.875rem',
+            border: '1px solid #e5e7eb', borderRadius: '9999px', outline: 'none',
+          }}
+        />
+        <button
+          onClick={doSearch}
+          disabled={searching}
+          style={{
+            padding: '0.5rem 1rem', background: '#000', color: '#fff',
+            border: 'none', borderRadius: '9999px', fontSize: '0.875rem',
+            cursor: searching ? 'wait' : 'pointer', opacity: searching ? 0.5 : 1,
+          }}
+        >{searching ? 'Searching...' : 'Search'}</button>
+        {searchResults && (
+          <button
+            onClick={() => { setSearchResults(null); setSearchQuery(''); }}
+            style={{
+              padding: '0.5rem 1rem', background: '#fff', color: '#374151',
+              border: '1px solid #e5e7eb', borderRadius: '9999px', fontSize: '0.875rem', cursor: 'pointer',
+            }}
+          >Clear</button>
+        )}
+      </div>
+
       {allCategories.length > 0 && (
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <button
@@ -117,7 +174,43 @@ export default function ConversationsPage() {
         </div>
       )}
 
-      {loading ? (
+      {searchResults ? (
+        <div>
+          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+            Found "{searchResults.query}" in {searchResults.total_conversations} conversation(s)
+          </div>
+          {searchResults.results.map((r) => (
+            <div
+              key={r.conversation_id}
+              onClick={() => openDetail(r.conversation_id)}
+              style={{
+                padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.75rem',
+                marginBottom: '0.75rem', cursor: 'pointer', background: '#fff',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                  {r.channel === 'instagram' ? '📷' : '💬'} {r.sender_id.slice(0, 12)}...
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                  {r.total_matches} match(es)
+                </span>
+              </div>
+              {r.matching_messages.slice(0, 2).map((m, i) => (
+                <div key={i} style={{
+                  padding: '0.5rem', background: m.role === 'user' ? '#f3f4f6' : '#eff6ff',
+                  borderRadius: '0.375rem', marginBottom: '0.25rem', fontSize: '0.8rem',
+                }}>
+                  <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>
+                    {m.role === 'user' ? 'CUSTOMER' : 'AI'}:
+                  </span>{' '}
+                  {highlightMatch(m.content, searchResults.query)}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : loading ? (
         <div style={{ color: '#9ca3af' }}>Loading...</div>
       ) : conversations.length === 0 ? (
         <div style={{ color: '#9ca3af', padding: '3rem', textAlign: 'center', border: '1px dashed #e5e7eb', borderRadius: '0.75rem' }}>
@@ -222,7 +315,21 @@ export default function ConversationsPage() {
                 </div>
 
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>CONVERSATION ({detail.messages?.length || 0} msgs)</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      CONVERSATION ({detail.messages?.length || 0} msgs)
+                    </div>
+                    <button
+                      onClick={() => {
+                        window.open(`/api/v1/dashboard/conversations/${detail.id}/export-pdf`, '_blank');
+                      }}
+                      style={{
+                        padding: '3px 10px', fontSize: '0.7rem', background: '#fff',
+                        border: '1px solid #e5e7eb', borderRadius: '9999px', cursor: 'pointer',
+                        color: '#374151',
+                      }}
+                    >Export PDF</button>
+                  </div>
                   <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem' }}>
                     {(detail.messages || []).map((m, i) => (
                       <div key={i} style={{

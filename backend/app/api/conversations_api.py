@@ -46,6 +46,47 @@ async def list_conversations(
     ]
 
 
+@router.get("/conversations/search")
+async def search_conversations(
+    q: str = Query(..., min_length=1),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search inside all conversation messages for a keyword."""
+    result = await db.execute(select(ConversationState).order_by(desc(ConversationState.last_message_at)))
+    all_convs = result.scalars().all()
+
+    matches = []
+    query_lower = q.lower()
+
+    for conv in all_convs:
+        msgs = conv.messages or []
+        matching_msgs = []
+        for i, m in enumerate(msgs):
+            if query_lower in (m.get("content", "") or "").lower():
+                matching_msgs.append({
+                    "index": i,
+                    "role": m.get("role", ""),
+                    "content": m.get("content", ""),
+                    "timestamp": m.get("timestamp", ""),
+                })
+
+        if matching_msgs:
+            matches.append({
+                "conversation_id": conv.id,
+                "sender_id": conv.sender_id,
+                "channel": conv.channel,
+                "intent_score": conv.intent_score,
+                "stage": conv.stage,
+                "categories": conv.categories or [],
+                "message_count": conv.message_count,
+                "last_message_at": conv.last_message_at.isoformat() if conv.last_message_at else None,
+                "matching_messages": matching_msgs[:5],
+                "total_matches": len(matching_msgs),
+            })
+
+    return {"query": q, "total_conversations": len(matches), "results": matches}
+
+
 @router.get("/conversations/{conversation_id}")
 async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
     """Get full details of a single conversation including messages and score history."""
