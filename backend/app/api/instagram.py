@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request, Query, HTTPException
 from fastapi.responses import PlainTextResponse
 from app.services.intent_scorer import score_conversation
 from app.services.category_tagger import auto_tag_conversation
+from app.services.business_hours import is_within_business_hours
 from app.core.database import async_session
 from app.models.conversation_state import ConversationState
 from app.models.customer import Customer
@@ -53,6 +54,11 @@ async def webhook(request: Request):
             except Exception:
                 pass
             await upsert_customer_from_instagram(sender, profile_name)
+            # Check business hours
+            is_open, closed_message = await is_within_business_hours()
+            if not is_open and closed_message:
+                await send_reply(sender, closed_message)
+                continue
             reply = await get_reply(sender, text)
             if reply is not None:
                 await send_reply(sender, reply)
@@ -195,6 +201,8 @@ async def upsert_customer_from_instagram(sender_id: str, profile_name: str = Non
             if customer:
                 customer.last_contact_at = datetime.utcnow()
                 customer.updated_at = datetime.utcnow()
+                if customer.is_archived:
+                    customer.is_archived = False
                 if profile_name and not customer.display_name:
                     customer.display_name = profile_name
                 try:

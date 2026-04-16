@@ -46,6 +46,7 @@ export default function CustomersPage() {
   const [phoneFilter, setPhoneFilter] = useState('');
   const [handleFilter, setHandleFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [archiveFilter, setArchiveFilter] = useState('false');
   const [selected, setSelected] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [conversations, setConversations] = useState([]);
@@ -62,6 +63,8 @@ export default function CustomersPage() {
     if (combined) params.append('search', combined);
     if (sourceFilter) params.append('source', sourceFilter);
     if (categoryFilter) params.append('category', categoryFilter);
+    if (archiveFilter === 'all') params.append('archived', 'all');
+    else params.append('archived', archiveFilter);
     try {
       const resp = await fetch(`/api/v1/customers/?${params}`);
       setCustomers(await resp.json());
@@ -72,7 +75,7 @@ export default function CustomersPage() {
     load();
     const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
-  }, [nameFilter, phoneFilter, handleFilter, sourceFilter, categoryFilter]);
+  }, [nameFilter, phoneFilter, handleFilter, sourceFilter, categoryFilter, archiveFilter]);
 
   const openCustomer = async (customer) => {
     setSelected(customer);
@@ -114,6 +117,25 @@ export default function CustomersPage() {
             borderRadius: '0.5rem', border: 'none', fontSize: '0.875rem', cursor: 'pointer',
           }}
         >+ Add Customer</button>
+      </div>
+
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '1rem' }}>
+        {[
+          { value: 'false', label: 'Active' },
+          { value: 'true', label: 'Archived' },
+          { value: 'all', label: 'All' },
+        ].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setArchiveFilter(opt.value)}
+            style={{
+              padding: '6px 16px', fontSize: '0.875rem', borderRadius: '9999px',
+              background: archiveFilter === opt.value ? '#000' : '#fff',
+              color: archiveFilter === opt.value ? '#fff' : '#374151',
+              border: '1px solid #e5e7eb', cursor: 'pointer', fontWeight: 500,
+            }}
+          >{opt.label}</button>
+        ))}
       </div>
 
       <div style={{
@@ -225,6 +247,12 @@ export default function CustomersPage() {
                     {c.display_name || c.handle || 'Unnamed'}
                   </div>
                   <SourceBadge source={c.source} />
+                  {c.is_archived && (
+                    <span style={{
+                      fontSize: '0.7rem', padding: '2px 6px', background: '#fef3c7',
+                      color: '#92400e', borderRadius: '4px', marginLeft: '4px',
+                    }}>Archived</span>
+                  )}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                   {c.handle && `@${c.handle} · `}
@@ -314,6 +342,20 @@ function CustomerDetail({ customer, conversations, onSave, onDelete }) {
               color: '#fff', borderRadius: '9999px', border: 'none', cursor: 'pointer',
             }}>Save</button>
           )}
+          <button
+            onClick={async () => {
+              const action = customer.is_archived ? 'unarchive' : 'archive';
+              await fetch(`/api/v1/customers/${customer.id}/${action}`, { method: 'POST' });
+              onSave({ ...customer, is_archived: !customer.is_archived });
+            }}
+            style={{
+              padding: '4px 12px', fontSize: '0.75rem',
+              background: customer.is_archived ? '#10b981' : '#f59e0b',
+              color: '#fff', border: 'none', borderRadius: '9999px', cursor: 'pointer',
+            }}
+          >
+            {customer.is_archived ? 'Unarchive' : 'Archive'}
+          </button>
           <button onClick={onDelete} style={{
             padding: '4px 12px', fontSize: '0.75rem', background: '#fff',
             color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '9999px', cursor: 'pointer',

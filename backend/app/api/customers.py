@@ -18,10 +18,19 @@ async def list_customers(
     tag: Optional[str] = Query(None),
     source: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
+    archived: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """List customers. Supports search by name/handle/email/phone, filter by tag, filter by source."""
     query = select(Customer)
+
+    # Archive filter
+    if archived == "true":
+        query = query.where(Customer.is_archived == True)
+    elif archived == "all":
+        pass
+    else:
+        query = query.where(Customer.is_archived == False)
 
     if search:
         terms = search.strip().split()
@@ -189,4 +198,29 @@ def _serialize(c: Customer) -> dict:
         "total_messages": c.total_messages,
         "created_at": c.created_at.isoformat() if c.created_at else None,
         "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+        "is_archived": c.is_archived or False,
     }
+
+
+@router.post("/customers/{customer_id}/archive")
+async def archive_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=404)
+    customer.is_archived = True
+    customer.updated_at = datetime.utcnow()
+    await db.commit()
+    return {"status": "archived"}
+
+
+@router.post("/customers/{customer_id}/unarchive")
+async def unarchive_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=404)
+    customer.is_archived = False
+    customer.updated_at = datetime.utcnow()
+    await db.commit()
+    return {"status": "unarchived"}

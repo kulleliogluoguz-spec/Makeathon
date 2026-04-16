@@ -1,6 +1,6 @@
 """Customer CRM model — unified identity across all channels."""
 
-from sqlalchemy import Column, String, Text, DateTime, JSON
+from sqlalchemy import Column, String, Text, DateTime, JSON, Boolean
 from datetime import datetime
 import uuid
 
@@ -33,6 +33,7 @@ class Customer(Base):
     instagram_sender_id = Column(String, default="", index=True)
     whatsapp_phone = Column(String, default="", index=True)
     external_ids = Column(JSON, default=dict)  # flexible future-proof
+    is_archived = Column(Boolean, default=False, index=True)
 
     # Stats (updated by system)
     last_contact_at = Column(DateTime, nullable=True)

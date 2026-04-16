@@ -1,10 +1,11 @@
 import { Routes, Route, Navigate, NavLink } from 'react-router-dom'
-import { UserCircle, Bot, MessageSquare, Users } from 'lucide-react'
+import { UserCircle, Bot, MessageSquare, Users, Settings } from 'lucide-react'
 import PersonaListPage from './pages/PersonaListPage'
 import PersonaEditorPage from './pages/PersonaEditorPage'
 import AgentListPage from './pages/AgentListPage'
 import ConversationsPage from './pages/ConversationsPage'
 import CustomersPage from './pages/CustomersPage'
+import SettingsPage from './pages/SettingsPage'
 
 function TopNav() {
   return (
@@ -26,6 +27,9 @@ function TopNav() {
         <NavLink to="/customers" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
           <Users size={16} strokeWidth={1.5} /> Customers
         </NavLink>
+        <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
+          <Settings size={16} strokeWidth={1.5} /> Settings
+        </NavLink>
       </nav>
       <div className="w-8 h-8 rounded-full bg-gray-200" />
     </header>
@@ -44,6 +48,7 @@ export default function App() {
           <Route path="/agents" element={<AgentListPage />} />
           <Route path="/conversations" element={<ConversationsPage />} />
           <Route path="/customers" element={<CustomersPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
     </div>
