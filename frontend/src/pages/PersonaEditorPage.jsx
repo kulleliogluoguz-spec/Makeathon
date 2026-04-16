@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Wand2, Eye, Copy, Trash2, Plus, X } from 'lucide-react'
+import { t } from '../lib/i18n'
 import TagInput from '../components/TagInput'
 import Toggle from '../components/Toggle'
 import Modal from '../components/Modal'
@@ -202,7 +203,7 @@ export default function PersonaEditorPage() {
 
         <div className="space-y-6">
           {/* Section 1: Identity */}
-          <Section id="section-identity" title="Identity" description="Who is this persona?">
+          <Section id="section-identity" title={t('personas_editor_identity')} description="Who is this persona?">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Display Name"><input value={form.display_name || ''} onChange={(e) => set('display_name', e.target.value)} className={inputCls} /></Field>
               <Field label="Role Title"><input value={form.role_title || ''} onChange={(e) => set('role_title', e.target.value)} className={inputCls} /></Field>
@@ -221,7 +222,7 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Section: Voice */}
-          <Section id="section-voice" title="Voice" description="Choose an ElevenLabs voice for your agent">
+          <Section id="section-voice" title={t('personas_editor_voice')} description={t('personas_editor_voice_desc')}>
             <VoicePicker
               selectedVoiceId={form.voice_id}
               voiceSettings={{
@@ -249,12 +250,12 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Product Catalogs */}
-          <Section id="section-catalogs" title="Product Catalogs" description="Upload product catalogs so the AI can recommend products during conversations.">
+          <Section id="section-catalogs" title={t('personas_editor_catalogs')} description={t('personas_editor_catalogs_desc')}>
             <CatalogManager personaId={id} />
           </Section>
 
           {/* Section 2: Personality Traits */}
-          <Section id="section-personality" title="Personality Traits" description="Configure personality on a 0-100 scale">
+          <Section id="section-personality" title={t('personas_editor_personality')} description="Configure personality on a 0-100 scale">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
               {traitMeta.map((t) => {
                 const val = form[t.key] ?? 50
@@ -277,7 +278,7 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Section 3: Communication Style */}
-          <Section id="section-communication" title="Communication Style">
+          <Section id="section-communication" title={t('personas_editor_communication')}>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Vocabulary Level">
                 <select value={form.vocabulary_level || 'professional'} onChange={(e) => set('vocabulary_level', e.target.value)} className={inputCls}>
@@ -301,7 +302,7 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Section 4: Phrases */}
-          <Section id="section-phrases" title="Phrases">
+          <Section id="section-phrases" title={t('personas_editor_phrases')}>
             <Field label={<>Example Phrases <span className="text-xs text-gray-400 ml-1">({(form.example_phrases || []).length})</span></>}>
               <textarea value={(form.example_phrases || []).join('\n')} onChange={(e) => set('example_phrases', e.target.value.split('\n').filter(Boolean))} rows={4} className={inputCls} placeholder="One phrase per line" />
             </Field>
@@ -313,7 +314,7 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Section 5: Response Rules */}
-          <Section id="section-response_rules" title="Response Rules" description="How the agent structures responses">
+          <Section id="section-response_rules" title={t('personas_editor_response_rules')} description="How the agent structures responses">
             <div className="space-y-3">
               <Toggle enabled={guidelines.ask_one_question_at_a_time ?? true} onChange={(v) => setGuideline('ask_one_question_at_a_time', v)} label="Ask only one question at a time" />
               <Toggle enabled={guidelines.always_confirm_understanding ?? true} onChange={(v) => setGuideline('always_confirm_understanding', v)} label="Always confirm understanding before moving on" />
@@ -328,7 +329,7 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Section 6: Emotional Intelligence */}
-          <Section id="section-emotional" title="Emotional Intelligence" description="How to respond to different caller emotions">
+          <Section id="section-emotional" title={t('personas_editor_emotional')} description="How to respond to different caller emotions">
             <div className="space-y-3">
               {Object.entries(emotions).map(([key, val]) => (
                 <div key={key} className="border border-gray-200 rounded-lg p-4">
@@ -341,7 +342,7 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Section 7: Escalation Rules */}
-          <Section id="section-escalation" title="Escalation Rules" description="When to transfer to a human agent">
+          <Section id="section-escalation" title={t('personas_editor_escalation')} description="When to transfer to a human agent">
             <div className="space-y-3">
               {triggers.map((t, i) => (
                 <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-3">
@@ -382,7 +383,7 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Section 8: Safety & Boundaries */}
-          <Section id="section-safety" title="Safety & Boundaries" description="Topics and promises to avoid">
+          <Section id="section-safety" title={t('personas_editor_safety')} description="Topics and promises to avoid">
             <Field label="Never Discuss"><TagInput tags={safety.never_discuss || []} onChange={(v) => setSafety('never_discuss', v)} placeholder="e.g. politics, religion" /></Field>
             <Field label="Never Promise"><TagInput tags={safety.never_promise || []} onChange={(v) => setSafety('never_promise', v)} placeholder="e.g. specific discounts" /></Field>
             <Field label="AI Disclaimer"><input value={safety.always_disclaim || ''} onChange={(e) => setSafety('always_disclaim', e.target.value)} className={inputCls} placeholder="I am an AI assistant." /></Field>
@@ -391,12 +392,12 @@ export default function PersonaEditorPage() {
           </Section>
 
           {/* Section 9: Custom Instructions */}
-          <Section id="section-custom" title="Custom Instructions" description="Any additional rules appended to the system prompt">
+          <Section id="section-custom" title={t('personas_editor_custom')} description="Any additional rules appended to the system prompt">
             <textarea value={form.custom_instructions || ''} onChange={(e) => set('custom_instructions', e.target.value)} rows={6} className={inputCls + ' font-mono text-xs'} placeholder="Additional rules and instructions..." />
           </Section>
 
           {/* Section 10: Generated System Prompt */}
-          <Section id="section-language" title="Generated System Prompt">
+          <Section id="section-language" title={t('personas_editor_system_prompt')}>
             <textarea
               value={form.system_prompt || ''}
               onChange={(e) => set('system_prompt', e.target.value)}
@@ -407,7 +408,7 @@ export default function PersonaEditorPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-1.5 px-4 py-2 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
-                  <Wand2 size={14} strokeWidth={1.5} /> {generating ? 'Generating...' : 'Generate from settings'}
+                  <Wand2 size={14} strokeWidth={1.5} /> {generating ? 'Generating...' : t('personas_generate_prompt')}
                 </button>
                 <button onClick={handlePreview} className="flex items-center gap-1.5 px-4 py-2 border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-50">
                   <Eye size={14} strokeWidth={1.5} /> Preview
@@ -426,10 +427,10 @@ export default function PersonaEditorPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-end gap-3 z-40">
         {dirty && <span className="flex items-center gap-1.5 text-sm text-yellow-600"><span className="w-2 h-2 rounded-full bg-yellow-400" /> Unsaved changes</span>}
         <button onClick={handleDiscard} disabled={!dirty} className="px-4 py-2 border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40">
-          Discard Changes
+          {t('personas_discard')}
         </button>
         <button onClick={handleSave} disabled={saving || !dirty} className="px-6 py-2 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 disabled:opacity-50 flex items-center gap-1.5">
-          <Save size={14} strokeWidth={1.5} /> {saving ? 'Saving...' : 'Save Changes'}
+          <Save size={14} strokeWidth={1.5} /> {saving ? 'Saving...' : t('personas_save')}
         </button>
       </div>
 

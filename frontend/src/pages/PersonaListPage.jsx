@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, UserCircle } from 'lucide-react'
 import Modal from '../components/Modal'
 import { listPersonas, createPersona } from '../lib/api'
+import { t } from '../lib/i18n'
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-400'
 
@@ -48,9 +49,9 @@ export default function PersonaListPage() {
   return (
     <div className="max-w-5xl mx-auto py-8 px-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Personas</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t('personas_title')}</h1>
         <button onClick={() => { loadTemplates(); setShowTemplates(true) }} className="px-4 py-1.5 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800">
-          + Create Persona
+          {t('personas_create')}
         </button>
       </div>
 
@@ -86,7 +87,7 @@ export default function PersonaListPage() {
           className="p-5 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors flex flex-col items-center justify-center gap-2 min-h-[160px]"
         >
           <Plus size={24} strokeWidth={1.5} />
-          <span className="text-sm font-medium">Create Persona</span>
+          <span className="text-sm font-medium">{t('personas_create')}</span>
         </button>
       </div>
 
@@ -113,17 +114,17 @@ export default function PersonaListPage() {
             background: '#fff', borderRadius: '0.75rem', padding: '2rem',
             width: '700px', maxHeight: '90vh', overflowY: 'auto',
           }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Create a Persona</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('personas_template_title')}</h2>
             <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              Start from a template or create from scratch
+              {t('personas_template_subtitle')}
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              {templates.map((t) => (
+              {templates.map((tpl) => (
                 <div
-                  key={t.id}
+                  key={tpl.id}
                   onClick={async () => {
-                    const resp = await fetch(`/api/v1/persona-templates/${t.id}`)
+                    const resp = await fetch(`/api/v1/persona-templates/${tpl.id}`)
                     const data = await resp.json()
                     const createResp = await fetch('/api/v1/personas/', {
                       method: 'POST',
@@ -145,13 +146,13 @@ export default function PersonaListPage() {
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#000'; e.currentTarget.style.transform = 'translateY(-2px)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'none' }}
                 >
-                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{t.icon}</div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem' }}>{t.name}</div>
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{tpl.icon}</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem' }}>{tpl.name}</div>
                   <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.75rem', lineHeight: 1.4 }}>
-                    {t.description}
+                    {tpl.description}
                   </div>
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {t.preview_traits.map((trait, i) => (
+                    {tpl.preview_traits.map((trait, i) => (
                       <span key={i} style={{
                         fontSize: '0.7rem', padding: '2px 8px', background: '#f3f4f6',
                         borderRadius: '9999px', color: '#374151',
@@ -171,7 +172,7 @@ export default function PersonaListPage() {
                   color: '#6b7280',
                 }}
               >
-                or start from scratch
+                {t('personas_from_scratch')}
               </button>
             </div>
           </div>

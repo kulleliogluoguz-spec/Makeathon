@@ -1,35 +1,16 @@
-# PROMPT: Add Platform Language Toggle (TR / EN)
-
-## CRITICAL RULES
-- Do NOT rewrite any existing file completely
-- Do NOT push to git
-- Do NOT touch backend — this is frontend-only
-
-## WHAT THIS DOES
-
-A language toggle in Settings (Turkish / English) that switches the ENTIRE platform UI language. Stored in localStorage so it persists across sessions.
-
-## IMPLEMENTATION
-
-### New file: `frontend/src/lib/i18n.js`
-
-```javascript
 const translations = {
   en: {
-    // Navbar
     nav_personas: "Personas",
     nav_agents: "Agents",
     nav_customers: "Customers",
     nav_conversations: "Conversations",
     nav_analytics: "Analytics",
     nav_settings: "Settings",
-
-    // Personas
     personas_title: "Personas",
     personas_create: "Create Persona",
     personas_template_title: "Create a Persona",
     personas_template_subtitle: "Start from a template or create from scratch",
-    personas_from_scratch: "or start from scratch →",
+    personas_from_scratch: "or start from scratch",
     personas_editor_identity: "Identity",
     personas_editor_personality: "Personality Traits",
     personas_editor_communication: "Communication Style",
@@ -45,14 +26,10 @@ const translations = {
     personas_editor_catalogs: "Product Catalogs",
     personas_editor_catalogs_desc: "Upload product catalogs so the AI can recommend products during conversations.",
     personas_save: "Save Changes",
-    personas_generate_prompt: "Generate from Settings",
+    personas_generate_prompt: "Generate from settings",
     personas_discard: "Discard Changes",
-
-    // Agents
     agents_title: "Agents",
     agents_create: "Create Agent",
-
-    // Customers
     customers_title: "Customers",
     customers_subtitle: "Unified customer database across all channels",
     customers_add: "+ Add Customer",
@@ -82,8 +59,6 @@ const translations = {
     customers_create: "Create",
     customers_cancel: "Cancel",
     customers_messages: "messages",
-
-    // Conversations
     conversations_title: "Conversations",
     conversations_subtitle: "Live view of all customer conversations with intent scoring",
     conversations_search: "Search inside messages... (e.g. price, return, t-shirt)",
@@ -103,8 +78,6 @@ const translations = {
     conversations_in: "in",
     conversations_conversations: "conversation(s)",
     conversations_matches: "match(es)",
-
-    // Analytics
     analytics_title: "Analytics",
     analytics_subtitle: "Performance overview across all channels",
     analytics_today: "Today",
@@ -127,8 +100,6 @@ const translations = {
     analytics_no_data: "No data",
     analytics_no_products: "No product mentions yet",
     analytics_mentions: "mentions",
-
-    // Settings
     settings_title: "Settings",
     settings_subtitle: "Business hours, auto-reply, and archive settings",
     settings_working_hours: "Working Hours",
@@ -144,44 +115,30 @@ const translations = {
     settings_hours_inactivity: "hours of inactivity",
     settings_save: "Save Settings",
     settings_saving: "Saving...",
-    settings_saved: "✓ Saved!",
+    settings_saved: "Saved!",
     settings_livechat: "Live Chat Widget",
     settings_livechat_desc: "Add this code to any website to enable AI chat. Paste before the closing </body> tag.",
     settings_persona: "PERSONA",
     settings_select_persona: "Select persona...",
     settings_copy_code: "Copy Code",
-    settings_copied: "✓ Copied!",
+    settings_copied: "Copied!",
     settings_test_widget: "Test on This Page",
     settings_language: "Platform Language",
     settings_language_desc: "Change the language of the entire platform interface.",
-
-    // Common
-    common_select: "Select",
-    common_preview: "Preview",
-    common_selected: "Selected",
-    common_upload: "Upload",
-    common_delete: "Delete",
-    common_edit: "Edit",
-    common_close: "Close",
     common_loading: "Loading...",
-    common_no_data: "No data",
   },
-
   tr: {
-    // Navbar
     nav_personas: "Personalar",
     nav_agents: "Ajanlar",
     nav_customers: "Müşteriler",
     nav_conversations: "Konuşmalar",
     nav_analytics: "Analitik",
     nav_settings: "Ayarlar",
-
-    // Personas
     personas_title: "Personalar",
     personas_create: "Persona Oluştur",
     personas_template_title: "Persona Oluştur",
     personas_template_subtitle: "Bir şablondan başla veya sıfırdan oluştur",
-    personas_from_scratch: "veya sıfırdan başla →",
+    personas_from_scratch: "veya sıfırdan başla",
     personas_editor_identity: "Kimlik",
     personas_editor_personality: "Kişilik Özellikleri",
     personas_editor_communication: "İletişim Stili",
@@ -193,18 +150,14 @@ const translations = {
     personas_editor_custom: "Özel Talimatlar",
     personas_editor_system_prompt: "Oluşturulan System Prompt",
     personas_editor_voice: "Ses",
-    personas_editor_voice_desc: "Ajınız için bir ElevenLabs sesi seçin",
+    personas_editor_voice_desc: "Ajanınız için bir ElevenLabs sesi seçin",
     personas_editor_catalogs: "Ürün Katalogları",
     personas_editor_catalogs_desc: "AI'ın konuşmalarda ürün önerebilmesi için katalog yükleyin.",
     personas_save: "Değişiklikleri Kaydet",
     personas_generate_prompt: "Ayarlardan Oluştur",
     personas_discard: "Değişiklikleri İptal Et",
-
-    // Agents
     agents_title: "Ajanlar",
     agents_create: "Ajan Oluştur",
-
-    // Customers
     customers_title: "Müşteriler",
     customers_subtitle: "Tüm kanallardaki birleşik müşteri veritabanı",
     customers_add: "+ Müşteri Ekle",
@@ -234,8 +187,6 @@ const translations = {
     customers_create: "Oluştur",
     customers_cancel: "İptal",
     customers_messages: "mesaj",
-
-    // Conversations
     conversations_title: "Konuşmalar",
     conversations_subtitle: "Tüm müşteri konuşmalarının canlı görünümü ve niyet puanlaması",
     conversations_search: "Mesajlarda ara... (ör. fiyat, iade, tişört)",
@@ -255,8 +206,6 @@ const translations = {
     conversations_in: "",
     conversations_conversations: "konuşmada",
     conversations_matches: "eşleşme",
-
-    // Analytics
     analytics_title: "Analitik",
     analytics_subtitle: "Tüm kanallardaki performans özeti",
     analytics_today: "Bugün",
@@ -279,8 +228,6 @@ const translations = {
     analytics_no_data: "Veri yok",
     analytics_no_products: "Henüz ürün bahsi yok",
     analytics_mentions: "bahis",
-
-    // Settings
     settings_title: "Ayarlar",
     settings_subtitle: "Çalışma saatleri, otomatik yanıt ve arşiv ayarları",
     settings_working_hours: "Çalışma Saatleri",
@@ -296,30 +243,19 @@ const translations = {
     settings_hours_inactivity: "saat hareketsizlik",
     settings_save: "Ayarları Kaydet",
     settings_saving: "Kaydediliyor...",
-    settings_saved: "✓ Kaydedildi!",
+    settings_saved: "Kaydedildi!",
     settings_livechat: "Canlı Sohbet Widget'ı",
     settings_livechat_desc: "Bu kodu herhangi bir web sitesine ekleyerek AI sohbeti etkinleştirin. </body> etiketinden önce yapıştırın.",
     settings_persona: "PERSONA",
     settings_select_persona: "Persona seçin...",
     settings_copy_code: "Kodu Kopyala",
-    settings_copied: "✓ Kopyalandı!",
+    settings_copied: "Kopyalandı!",
     settings_test_widget: "Bu Sayfada Test Et",
     settings_language: "Platform Dili",
     settings_language_desc: "Tüm platform arayüzünün dilini değiştirin.",
-
-    // Common
-    common_select: "Seç",
-    common_preview: "Önizle",
-    common_selected: "Seçildi",
-    common_upload: "Yükle",
-    common_delete: "Sil",
-    common_edit: "Düzenle",
-    common_close: "Kapat",
     common_loading: "Yükleniyor...",
-    common_no_data: "Veri yok",
   },
 };
-
 
 let currentLang = localStorage.getItem('platform_language') || 'en';
 
@@ -336,104 +272,3 @@ export function setLang(lang) {
   localStorage.setItem('platform_language', lang);
   window.location.reload();
 }
-```
-
-### Edit: `frontend/src/pages/SettingsPage.jsx`
-
-Add the language toggle section. At the top, add import:
-```jsx
-import { t, getLang, setLang } from '../lib/i18n';
-```
-
-Add this section at the very TOP of the settings sections (BEFORE Working Hours):
-
-```jsx
-{/* Platform Language */}
-<section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
-  <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('settings_language')}</h2>
-  <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>{t('settings_language_desc')}</p>
-  <div style={{ display: 'flex', gap: '0.5rem' }}>
-    <button
-      onClick={() => setLang('en')}
-      style={{
-        padding: '8px 24px', fontSize: '0.875rem', borderRadius: '9999px',
-        background: getLang() === 'en' ? '#000' : '#fff',
-        color: getLang() === 'en' ? '#fff' : '#374151',
-        border: '1px solid #e5e7eb', cursor: 'pointer', fontWeight: 500,
-      }}
-    >English</button>
-    <button
-      onClick={() => setLang('tr')}
-      style={{
-        padding: '8px 24px', fontSize: '0.875rem', borderRadius: '9999px',
-        background: getLang() === 'tr' ? '#000' : '#fff',
-        color: getLang() === 'tr' ? '#fff' : '#374151',
-        border: '1px solid #e5e7eb', cursor: 'pointer', fontWeight: 500,
-      }}
-    >Türkçe</button>
-  </div>
-</section>
-```
-
-### IMPORTANT — How to use translations in existing pages:
-
-The i18n.js file provides a `t()` function. To translate a page, import it and replace hardcoded strings:
-
-```jsx
-import { t } from '../lib/i18n';
-
-// Before:
-<h1>Customers</h1>
-
-// After:
-<h1>{t('customers_title')}</h1>
-```
-
-Apply this to ALL existing pages. For each page, replace hardcoded English text with `t('key')` calls using the keys from translations above.
-
-Pages to update (add `import { t } from '../lib/i18n';` at top of each, then replace strings):
-
-1. **App.jsx** — navbar links
-2. **PersonaListPage.jsx** — title, create button, template modal
-3. **PersonaEditorPage.jsx** — section headings, buttons
-4. **CustomersPage.jsx** — title, subtitle, filter labels, buttons, detail labels
-5. **ConversationsPage.jsx** — title, subtitle, search, detail labels
-6. **AnalyticsPage.jsx** — title, subtitle, card labels, chart titles
-7. **SettingsPage.jsx** — section titles, labels, buttons
-
-For EACH page: only replace the hardcoded text strings with t() calls. Do NOT change any logic, layout, styling, or component structure.
-
-Example for App.jsx navbar:
-```jsx
-// Before:
-<Link to="/customers">Customers</Link>
-// After:
-<Link to="/customers">{t('nav_customers')}</Link>
-```
-
-Example for CustomersPage:
-```jsx
-// Before:
-<h1>Customers</h1>
-<p>Unified customer database across all channels</p>
-// After:
-<h1>{t('customers_title')}</h1>
-<p>{t('customers_subtitle')}</p>
-```
-
-Do this for EVERY visible text string in EVERY page. Use the translation keys provided in the i18n.js file.
-
-## DO NOT
-- ❌ DO NOT change any logic or layout
-- ❌ DO NOT restructure components
-- ❌ DO NOT touch backend
-- ❌ DO NOT push to git
-
-## TEST
-
-1. Open Settings → see language toggle at top → click "Türkçe" → page reloads → entire UI is in Turkish
-2. Navigate to every page — all text should be Turkish
-3. Go back to Settings → click "English" → everything back to English
-4. Close browser, reopen → language choice persists (localStorage)
-
-## START NOW

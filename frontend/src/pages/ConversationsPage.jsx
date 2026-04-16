@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { t } from '../lib/i18n';
 
 const STAGE_COLORS = {
   awareness: '#94a3b8',
@@ -112,15 +113,15 @@ export default function ConversationsPage() {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>Conversations</h1>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('conversations_title')}</h1>
       <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '2rem' }}>
-        Live view of all customer conversations with intent scoring
+        {t('conversations_subtitle')}
       </p>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <input
           type="text"
-          placeholder="Search inside messages... (e.g. fiyat, iade)"
+          placeholder={t('conversations_search')}
           value={searchQuery}
           onChange={(e) => { setSearchQuery(e.target.value); if (!e.target.value) setSearchResults(null); }}
           onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
@@ -137,7 +138,7 @@ export default function ConversationsPage() {
             border: 'none', borderRadius: '9999px', fontSize: '0.875rem',
             cursor: searching ? 'wait' : 'pointer', opacity: searching ? 0.5 : 1,
           }}
-        >{searching ? 'Searching...' : 'Search'}</button>
+        >{searching ? 'Searching...' : t('conversations_search_btn')}</button>
         {searchResults && (
           <button
             onClick={() => { setSearchResults(null); setSearchQuery(''); }}
@@ -145,7 +146,7 @@ export default function ConversationsPage() {
               padding: '0.5rem 1rem', background: '#fff', color: '#374151',
               border: '1px solid #e5e7eb', borderRadius: '9999px', fontSize: '0.875rem', cursor: 'pointer',
             }}
-          >Clear</button>
+          >{t('conversations_clear')}</button>
         )}
       </div>
 
@@ -177,7 +178,7 @@ export default function ConversationsPage() {
       {searchResults ? (
         <div>
           <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-            Found "{searchResults.query}" in {searchResults.total_conversations} conversation(s)
+            {t('conversations_found')} "{searchResults.query}" {t('conversations_in')} {searchResults.total_conversations} {t('conversations_conversations')}
           </div>
           {searchResults.results.map((r) => (
             <div

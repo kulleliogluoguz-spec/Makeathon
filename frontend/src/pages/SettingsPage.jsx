@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { t, getLang, setLang } from '../lib/i18n';
 
 const DAYS = [
   { key: 'mon', label: 'Monday' },
@@ -72,18 +73,44 @@ export default function SettingsPage() {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.25rem' }}>Settings</h1>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.25rem' }}>{t('settings_title')}</h1>
       <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '2rem' }}>
-        Business hours, auto-reply, and archive settings
+        {t('settings_subtitle')}
       </p>
+
+      {/* Platform Language */}
+      <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('settings_language')}</h2>
+        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>{t('settings_language_desc')}</p>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={() => setLang('en')}
+            style={{
+              padding: '8px 24px', fontSize: '0.875rem', borderRadius: '9999px',
+              background: getLang() === 'en' ? '#000' : '#fff',
+              color: getLang() === 'en' ? '#fff' : '#374151',
+              border: '1px solid #e5e7eb', cursor: 'pointer', fontWeight: 500,
+            }}
+          >English</button>
+          <button
+            onClick={() => setLang('tr')}
+            style={{
+              padding: '8px 24px', fontSize: '0.875rem', borderRadius: '9999px',
+              background: getLang() === 'tr' ? '#000' : '#fff',
+              color: getLang() === 'tr' ? '#fff' : '#374151',
+              border: '1px solid #e5e7eb', cursor: 'pointer', fontWeight: 500,
+            }}
+          >Türkçe</button>
+        </div>
+      </section>
 
       {/* Working Hours */}
       <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Working Hours</h2>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>{t('settings_working_hours')}</h2>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', cursor: 'pointer' }}>
             <span style={{ color: settings.outside_hours_enabled ? '#10b981' : '#94a3b8', fontWeight: 500 }}>
-              {settings.outside_hours_enabled ? 'Active' : 'Disabled (24/7)'}
+              {settings.outside_hours_enabled ? t('settings_active') : t('settings_disabled_247')}
             </span>
             <input
               type="checkbox"
@@ -95,7 +122,7 @@ export default function SettingsPage() {
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>TIMEZONE</label>
+          <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>{t('settings_timezone')}</label>
           <select
             value={settings.timezone}
             onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
@@ -144,14 +171,14 @@ export default function SettingsPage() {
       {/* Outside Hours Message */}
       <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Outside Hours Auto-Reply</h2>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>{t('settings_outside_hours')}</h2>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem' }}>
             <input
               type="checkbox"
               checked={settings.outside_hours_enabled}
               onChange={(e) => setSettings({ ...settings, outside_hours_enabled: e.target.checked })}
             />
-            Enabled
+            {t('settings_enabled')}
           </label>
         </div>
         <textarea
@@ -164,7 +191,7 @@ export default function SettingsPage() {
 
       {/* Holidays */}
       <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.75rem' }}>Holidays</h2>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.75rem' }}>{t('settings_holidays')}</h2>
         <div style={{ display: 'flex', gap: '6px', marginBottom: '0.75rem' }}>
           <input
             type="date"
@@ -172,7 +199,7 @@ export default function SettingsPage() {
             onChange={(e) => setHolidayInput(e.target.value)}
             style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', outline: 'none' }}
           />
-          <button onClick={addHoliday} style={{ padding: '6px 12px', background: '#000', color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>Add</button>
+          <button onClick={addHoliday} style={{ padding: '6px 12px', background: '#000', color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>{t('settings_holiday_add')}</button>
         </div>
         <textarea
           value={settings.holiday_message}
@@ -193,9 +220,9 @@ export default function SettingsPage() {
 
       {/* Auto-Archive */}
       <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.75rem' }}>Auto-Archive</h2>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.75rem' }}>{t('settings_auto_archive')}</h2>
         <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-          Automatically archive customers with no activity after this many hours. Set 0 to disable.
+          {t('settings_auto_archive_desc')}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
@@ -205,25 +232,25 @@ export default function SettingsPage() {
             min="0"
             style={{ width: '80px', padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: '0.5rem', fontSize: '0.875rem', outline: 'none' }}
           />
-          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>hours of inactivity</span>
+          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t('settings_hours_inactivity')}</span>
         </div>
       </section>
 
       {/* Live Chat Widget */}
       <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>Live Chat Widget</h2>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('settings_livechat')}</h2>
         <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-          Add this code to any website to enable AI chat. Paste before the closing &lt;/body&gt; tag.
+          {t('settings_livechat_desc')}
         </p>
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>PERSONA</label>
+          <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>{t('settings_persona')}</label>
           <select
             value={selectedPersona}
             onChange={(e) => setSelectedPersona(e.target.value)}
             style={{ width: '100%', padding: '6px 10px', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', outline: 'none' }}
           >
-            <option value="">Select persona...</option>
+            <option value="">{t('settings_select_persona')}</option>
             {personas.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -250,7 +277,7 @@ export default function SettingsPage() {
                   padding: '6px 16px', background: '#000', color: '#fff',
                   border: 'none', borderRadius: '9999px', fontSize: '0.875rem', cursor: 'pointer',
                 }}
-              >{copied ? 'Copied!' : 'Copy Code'}</button>
+              >{copied ? t('settings_copied') : t('settings_copy_code')}</button>
               <button
                 onClick={() => {
                   var s = document.createElement('script');
@@ -262,7 +289,7 @@ export default function SettingsPage() {
                   padding: '6px 16px', background: '#fff', color: '#000',
                   border: '1px solid #e5e7eb', borderRadius: '9999px', fontSize: '0.875rem', cursor: 'pointer',
                 }}
-              >Test on This Page</button>
+              >{t('settings_test_widget')}</button>
             </div>
           </>
         )}
@@ -278,7 +305,7 @@ export default function SettingsPage() {
           cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.5 : 1,
         }}
       >
-        {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}
+        {saving ? t('settings_saving') : saved ? t('settings_saved') : t('settings_save')}
       </button>
     </div>
   );

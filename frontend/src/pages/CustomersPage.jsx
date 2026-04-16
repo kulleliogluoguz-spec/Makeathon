@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { t } from '../lib/i18n';
 
 function Tag({ children, onRemove }) {
   return (
@@ -107,8 +108,8 @@ export default function CustomersPage() {
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.25rem' }}>Customers</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Unified customer database across all channels</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.25rem' }}>{t('customers_title')}</h1>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{t('customers_subtitle')}</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
@@ -116,14 +117,14 @@ export default function CustomersPage() {
             padding: '0.5rem 1rem', background: '#000', color: '#fff',
             borderRadius: '0.5rem', border: 'none', fontSize: '0.875rem', cursor: 'pointer',
           }}
-        >+ Add Customer</button>
+        >{t('customers_add')}</button>
       </div>
 
       <div style={{ display: 'flex', gap: '4px', marginBottom: '1rem' }}>
         {[
-          { value: 'false', label: 'Active' },
-          { value: 'true', label: 'Archived' },
-          { value: 'all', label: 'All' },
+          { value: 'false', label: t('customers_active') },
+          { value: 'true', label: t('customers_archived') },
+          { value: 'all', label: t('customers_all') },
         ].map((opt) => (
           <button
             key={opt.value}
@@ -146,7 +147,7 @@ export default function CustomersPage() {
       }}>
         <input
           type="text"
-          placeholder="Search by name..."
+          placeholder={t('customers_search_name')}
           value={nameFilter}
           onChange={(e) => setNameFilter(e.target.value)}
           style={{
@@ -156,7 +157,7 @@ export default function CustomersPage() {
         />
         <input
           type="text"
-          placeholder="Phone number..."
+          placeholder={t('customers_search_phone')}
           value={phoneFilter}
           onChange={(e) => setPhoneFilter(e.target.value)}
           style={{
@@ -166,7 +167,7 @@ export default function CustomersPage() {
         />
         <input
           type="text"
-          placeholder="Email or @handle..."
+          placeholder={t('customers_search_email')}
           value={handleFilter}
           onChange={(e) => setHandleFilter(e.target.value)}
           style={{
@@ -183,7 +184,7 @@ export default function CustomersPage() {
             background: '#fff',
           }}
         >
-          <option value="">All channels</option>
+          <option value="">{t('customers_all_channels')}</option>
           <option value="instagram">Instagram</option>
           <option value="whatsapp">WhatsApp</option>
           <option value="livechat">Live Chat</option>
@@ -201,7 +202,7 @@ export default function CustomersPage() {
               color: !categoryFilter ? '#fff' : '#374151',
               border: '1px solid #e5e7eb', cursor: 'pointer',
             }}
-          >All categories</button>
+          >{t('customers_all_categories')}</button>
           {allCategories.map((c) => (
             <button
               key={c.id}
@@ -222,7 +223,7 @@ export default function CustomersPage() {
           color: '#9ca3af', padding: '3rem', textAlign: 'center',
           border: '1px dashed #e5e7eb', borderRadius: '0.75rem',
         }}>
-          No customers yet. They will appear here when they message you, or you can add them manually.
+          {t('customers_no_customers')}
         </div>
       ) : (
         <div style={{ display: 'flex', gap: '1.5rem' }}>
@@ -258,7 +259,7 @@ export default function CustomersPage() {
                   {c.handle && `@${c.handle} · `}
                   {c.email && `${c.email} · `}
                   {c.phone && `${c.phone} · `}
-                  {c.total_messages} messages
+                  {c.total_messages} {t('customers_messages')}
                 </div>
                 {c.tags && c.tags.length > 0 && (
                   <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>

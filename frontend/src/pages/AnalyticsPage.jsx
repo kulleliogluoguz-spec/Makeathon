@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { t } from '../lib/i18n';
 
 const CHANNEL_COLORS = {
   instagram: '#e1306c',
@@ -133,15 +134,15 @@ export default function AnalyticsPage() {
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.25rem' }}>Analytics</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Performance overview across all channels</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.25rem' }}>{t('analytics_title')}</h1>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{t('analytics_subtitle')}</p>
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
           {[
-            { value: 'today', label: 'Today' },
-            { value: 'week', label: 'Week' },
-            { value: 'month', label: 'Month' },
-            { value: 'all', label: 'All Time' },
+            { value: 'today', label: t('analytics_today') },
+            { value: 'week', label: t('analytics_week') },
+            { value: 'month', label: t('analytics_month') },
+            { value: 'all', label: t('analytics_all_time') },
           ].map(opt => (
             <button
               key={opt.value}
@@ -160,21 +161,21 @@ export default function AnalyticsPage() {
       {/* Overview Cards */}
       {overview && (
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          <MetricCard label="Conversations" value={overview.total_conversations} />
-          <MetricCard label="Customers" value={overview.total_customers} />
-          <MetricCard label="Messages" value={overview.total_messages} />
-          <MetricCard label="Avg Intent Score" value={overview.avg_intent_score} />
-          <MetricCard label="High Intent (70+)" value={overview.high_intent_count} sub="Ready to buy" />
-          <MetricCard label="Active Today" value={overview.active_today} />
+          <MetricCard label={t('analytics_conversations')} value={overview.total_conversations} />
+          <MetricCard label={t('analytics_customers')} value={overview.total_customers} />
+          <MetricCard label={t('analytics_messages')} value={overview.total_messages} />
+          <MetricCard label={t('analytics_avg_intent')} value={overview.avg_intent_score} />
+          <MetricCard label={t('analytics_high_intent')} value={overview.high_intent_count} sub={t('analytics_ready_to_buy')} />
+          <MetricCard label={t('analytics_active_today')} value={overview.active_today} />
         </div>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
         {/* Channel Distribution */}
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.25rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '1rem' }}>Channel Distribution</h3>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '1rem' }}>{t('analytics_channel_dist')}</h3>
           {channels.length === 0 ? (
-            <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No data</div>
+            <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>{t('analytics_no_data')}</div>
           ) : (
             <div>
               {channels.map((ch, i) => {
