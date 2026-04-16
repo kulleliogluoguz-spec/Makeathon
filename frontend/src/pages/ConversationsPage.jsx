@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { t } from '../lib/i18n';
+import { authFetch, getUser } from '../lib/auth';
 
 const STAGE_COLORS = {
   awareness: '#94a3b8',
@@ -56,6 +57,12 @@ export default function ConversationsPage() {
   const [csatData, setCsatData] = useState(null);
   const [quickReplies, setQuickReplies] = useState([]);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [agents, setAgents] = useState([]);
+  const [assignedFilter, setAssignedFilter] = useState('');
+
+  useEffect(() => {
+    authFetch('/api/v1/auth/users').then(r => r.ok ? r.json() : []).then(setAgents).catch(() => {});
+  }, []);
   const [loading, setLoading] = useState(true);
   const [allCategories, setAllCategories] = useState([]);
   const [activeTag, setActiveTag] = useState('');
@@ -91,7 +98,8 @@ export default function ConversationsPage() {
 
   const loadConversations = async () => {
     try {
-      const params = activeTag ? `?tag=${activeTag}` : '';
+      let params = activeTag ? `?tag=${activeTag}` : '';
+      if (assignedFilter) params += `${params ? '&' : '?'}assigned_to=${assignedFilter}`;
       const resp = await fetch(`/api/v1/dashboard/conversations/${params}`);
       const data = await resp.json();
       setConversations(data);
@@ -103,7 +111,7 @@ export default function ConversationsPage() {
     loadConversations();
     const interval = setInterval(loadConversations, 10000);
     return () => clearInterval(interval);
-  }, [activeTag]);
+  }, [activeTag, assignedFilter]);
 
   const openDetail = async (id) => {
     setSelected(id);
@@ -123,6 +131,11 @@ export default function ConversationsPage() {
       <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '2rem' }}>
         {t('conversations_subtitle')}
       </p>
+
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+        <button onClick={() => setAssignedFilter('')} style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '9999px', background: !assignedFilter ? '#000' : '#fff', color: !assignedFilter ? '#fff' : '#374151', border: '1px solid #e5e7eb', cursor: 'pointer' }}>All</button>
+        <button onClick={() => setAssignedFilter(getUser()?.id || '')} style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '9999px', background: assignedFilter === getUser()?.id ? '#000' : '#fff', color: assignedFilter === getUser()?.id ? '#fff' : '#374151', border: '1px solid #e5e7eb', cursor: 'pointer' }}>{t('conv_my_conversations')}</button>
+      </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <input
@@ -293,6 +306,31 @@ export default function ConversationsPage() {
                   <StageBadge stage={detail.stage} />
                 </div>
 
+                {/* Assignment & Mode */}
+                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.7rem', color: '#6b7280', marginBottom: '2px' }}>{t('conv_assigned_to')}</div>
+                    <select value={detail.assigned_to || ''} onChange={async (e) => { await authFetch(`/api/v1/conversations/${detail.id}/assign`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent_id: e.target.value }) }); openDetail(detail.id); }} style={{ width: '100%', padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #e5e7eb', borderRadius: '0.375rem', outline: 'none' }}>
+                      <option value="">{t('conv_unassigned')}</option>
+                      {agents.map(a => <option key={a.id} value={a.id}>{a.display_name} ({a.role})</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.7rem', color: '#6b7280', marginBottom: '2px' }}>{t('conv_response_mode')}</div>
+                    <select value={detail.response_mode || 'ai_auto'} onChange={async (e) => { await authFetch(`/api/v1/conversations/${detail.id}/set-mode`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: e.target.value }) }); openDetail(detail.id); }} style={{ width: '100%', padding: '4px 8px', fontSize: '0.8rem', border: '1px solid #e5e7eb', borderRadius: '0.375rem', outline: 'none', background: detail.response_mode === 'human_only' ? '#fef2f2' : detail.response_mode === 'ai_suggest' ? '#eff6ff' : '#f0fdf4' }}>
+                      <option value="ai_auto">{t('conv_ai_auto')}</option>
+                      <option value="ai_suggest">{t('conv_ai_suggest')}</option>
+                      <option value="human_only">{t('conv_human_only')}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {detail.escalated && (
+                  <div style={{ padding: '0.5rem 0.75rem', background: '#fef3c7', borderRadius: '0.5rem', fontSize: '0.8rem', color: '#92400e', marginBottom: '1rem' }}>
+                    {t('conv_escalated')}: {detail.escalation_reason}
+                  </div>
+                )}
+
                 <div style={{ marginBottom: '1.5rem' }}>
                   <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px' }}>INTENT SCORE</div>
                   <ScoreGauge score={detail.intent_score} />
@@ -386,6 +424,17 @@ export default function ConversationsPage() {
                       ))}
                     </div>
                   )}
+                  {detail.pending_reply && (
+                    <div style={{ marginBottom: '1rem', padding: '1rem', border: '2px solid #3b82f6', borderRadius: '0.5rem', background: '#eff6ff' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600, marginBottom: '0.5rem' }}>{t('conv_pending_reply')}</div>
+                      <textarea id="pending-reply-text" defaultValue={detail.pending_reply} rows={3} style={{ width: '100%', padding: '8px', border: '1px solid #bfdbfe', borderRadius: '0.375rem', fontSize: '0.85rem', outline: 'none', resize: 'vertical', marginBottom: '0.5rem', boxSizing: 'border-box' }} />
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button onClick={async () => { const text = document.getElementById('pending-reply-text').value; await authFetch(`/api/v1/conversations/${detail.id}/approve-reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, product_ids: detail.pending_product_ids }) }); openDetail(detail.id); }} style={{ padding: '6px 16px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '9999px', fontSize: '0.8rem', cursor: 'pointer' }}>{t('conv_approve_send')}</button>
+                        <button onClick={async () => { await authFetch(`/api/v1/conversations/${detail.id}/approve-reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: detail.pending_reply, product_ids: detail.pending_product_ids }) }); openDetail(detail.id); }} style={{ padding: '6px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '9999px', fontSize: '0.8rem', cursor: 'pointer' }}>{t('conv_send_as_is')}</button>
+                        <button onClick={async () => { await authFetch(`/api/v1/conversations/${detail.id}/set-mode`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'human_only' }) }); openDetail(detail.id); }} style={{ padding: '6px 16px', background: '#fff', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '9999px', fontSize: '0.8rem', cursor: 'pointer' }}>{t('conv_discard_manual')}</button>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '0.75rem' }}>
                     {(detail.messages || []).map((m, i) => (
                       <div key={i} style={{
@@ -402,6 +451,12 @@ export default function ConversationsPage() {
                       </div>
                     ))}
                   </div>
+                  {(detail.response_mode === 'human_only' || detail.response_mode === 'ai_suggest') && (
+                    <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+                      <input type="text" id="manual-reply-input" placeholder={t('conv_type_reply')} onKeyDown={async (e) => { if (e.key === 'Enter') { const text = e.target.value.trim(); if (!text) return; await authFetch(`/api/v1/conversations/${detail.id}/send-manual`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) }); e.target.value = ''; openDetail(detail.id); } }} style={{ flex: 1, padding: '8px 14px', border: '1px solid #e5e7eb', borderRadius: '9999px', fontSize: '0.85rem', outline: 'none' }} />
+                      <button onClick={async () => { const input = document.getElementById('manual-reply-input'); const text = input.value.trim(); if (!text) return; await authFetch(`/api/v1/conversations/${detail.id}/send-manual`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) }); input.value = ''; openDetail(detail.id); }} style={{ padding: '8px 16px', background: '#000', color: '#fff', border: 'none', borderRadius: '9999px', fontSize: '0.85rem', cursor: 'pointer' }}>{t('conv_send')}</button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

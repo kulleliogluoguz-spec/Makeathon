@@ -79,14 +79,68 @@ async def webhook(request: Request):
                     continue
                 except Exception as e:
                     print(f"CSAT save error: {e}")
+            # Auto-assign conversation
+            try:
+                from app.services.assignment import auto_assign_conversation
+                await auto_assign_conversation(sender)
+            except Exception as e:
+                print(f"Auto-assign error: {e}")
+
+            # Check response mode
+            response_mode = "ai_auto"
+            try:
+                from app.core.database import async_session as asess
+                from app.models.conversation_state import ConversationState as CS
+                async with asess() as sess:
+                    conv_result = await sess.execute(select(CS).where(CS.sender_id == sender))
+                    conv_state = conv_result.scalar_one_or_none()
+                    if conv_state:
+                        response_mode = conv_state.response_mode or "ai_auto"
+            except Exception:
+                pass
+
+            if response_mode == "human_only":
+                print(f"Human-only mode for {sender}, skipping AI reply")
+                continue
+
             # Check business hours
             is_open, closed_message = await is_within_business_hours()
             if not is_open and closed_message:
                 await send_reply(sender, closed_message)
                 continue
             reply = await get_reply(sender, text)
+
+            # If ai_suggest mode, save reply as pending instead of sending
+            if response_mode == "ai_suggest" and reply is not None:
+                try:
+                    async with asess() as sess:
+                        conv_result = await sess.execute(select(CS).where(CS.sender_id == sender))
+                        conv_state = conv_result.scalar_one_or_none()
+                        if conv_state:
+                            conv_state.pending_reply = reply
+                            conv_state.pending_product_ids = []
+                            await sess.commit()
+                    print(f"AI Suggest mode: saved pending reply for {sender}")
+                    continue
+                except Exception as e:
+                    print(f"Pending save error: {e}")
+
             if reply is not None:
                 await send_reply(sender, reply)
+
+            # Auto-escalation based on intent score
+            try:
+                async with asess() as sess:
+                    conv_result = await sess.execute(select(CS).where(CS.sender_id == sender))
+                    conv_state = conv_result.scalar_one_or_none()
+                    if conv_state and conv_state.intent_score >= 80 and conv_state.response_mode == "ai_auto":
+                        conv_state.response_mode = "ai_suggest"
+                        conv_state.escalated = True
+                        conv_state.escalation_reason = f"Intent score reached {conv_state.intent_score}"
+                        await sess.commit()
+                        print(f"Auto-escalated {sender}: score {conv_state.intent_score}")
+            except Exception as e:
+                print(f"Escalation check error: {e}")
     return {"status": "ok"}
 
 async def get_active_persona_prompt():

@@ -97,8 +97,50 @@ async def handle_webhook(request: Request):
             # Upsert customer
             await upsert_messenger_customer(sender_id)
 
+            # Auto-assign
+            try:
+                from app.services.assignment import auto_assign_conversation
+                await auto_assign_conversation(sender_id)
+            except Exception as e:
+                print(f"Auto-assign error: {e}")
+
+            # Check response mode
+            response_mode = "ai_auto"
+            try:
+                from app.core.database import async_session as asess
+                from app.models.conversation_state import ConversationState as CS
+                from sqlalchemy import select as sel3
+                async with asess() as sess:
+                    conv_result = await sess.execute(sel3(CS).where(CS.sender_id == sender_id))
+                    conv_state = conv_result.scalar_one_or_none()
+                    if conv_state:
+                        response_mode = conv_state.response_mode or "ai_auto"
+            except Exception:
+                pass
+
+            if response_mode == "human_only":
+                print(f"Human-only mode for {sender_id}, skipping AI reply")
+                await save_messenger_conversation(sender_id, text, "", [])
+                continue
+
             # Generate reply
             reply_text, product_images = await get_messenger_reply(sender_id, text)
+
+            # If ai_suggest mode, save as pending
+            if response_mode == "ai_suggest":
+                try:
+                    async with asess() as sess:
+                        conv_result = await sess.execute(sel3(CS).where(CS.sender_id == sender_id))
+                        conv_state = conv_result.scalar_one_or_none()
+                        if conv_state:
+                            conv_state.pending_reply = reply_text
+                            conv_state.pending_product_ids = [p for p in product_images]
+                            await sess.commit()
+                    print(f"AI Suggest mode: saved pending reply for {sender_id}")
+                    await save_messenger_conversation(sender_id, text, "", [])
+                    continue
+                except Exception as e:
+                    print(f"Pending save error: {e}")
 
             # Send text reply
             await send_messenger_reply(sender_id, reply_text)
@@ -109,6 +151,19 @@ async def handle_webhook(request: Request):
 
             # Save to conversation state
             await save_messenger_conversation(sender_id, text, reply_text, product_images)
+
+            # Auto-escalation
+            try:
+                async with asess() as sess:
+                    conv_result = await sess.execute(sel3(CS).where(CS.sender_id == sender_id))
+                    conv_state = conv_result.scalar_one_or_none()
+                    if conv_state and conv_state.intent_score >= 80 and conv_state.response_mode == "ai_auto":
+                        conv_state.response_mode = "ai_suggest"
+                        conv_state.escalated = True
+                        conv_state.escalation_reason = f"Intent score reached {conv_state.intent_score}"
+                        await sess.commit()
+            except Exception as e:
+                print(f"Escalation error: {e}")
 
     return {"status": "ok"}
 

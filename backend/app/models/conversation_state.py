@@ -1,6 +1,6 @@
 """Conversation state tracking — per-customer intent scoring."""
 
-from sqlalchemy import Column, String, Integer, Text, DateTime, JSON, Float
+from sqlalchemy import Column, String, Integer, Text, DateTime, JSON, Float, Boolean
 from datetime import datetime
 import uuid
 
@@ -38,6 +38,14 @@ class ConversationState(Base):
     # Metadata
     message_count = Column(Integer, default=0)
     products_mentioned = Column(JSON, default=list)  # product IDs mentioned
+
+    # Assignment & Hybrid Mode
+    assigned_to = Column(String, default="")
+    response_mode = Column(String, default="ai_auto")  # "ai_auto", "ai_suggest", "human_only"
+    pending_reply = Column(Text, default="")
+    pending_product_ids = Column(JSON, default=list)
+    escalated = Column(Boolean, default=False)
+    escalation_reason = Column(String, default="")
     last_message_at = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)

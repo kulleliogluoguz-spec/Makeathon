@@ -14,6 +14,7 @@ router = APIRouter()
 @router.get("/conversations/")
 async def list_conversations(
     tag: Optional[str] = Query(None),
+    assigned_to: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """List all conversations ordered by most recent activity."""
@@ -24,6 +25,8 @@ async def list_conversations(
 
     if tag:
         states = [s for s in states if tag in (s.categories or [])]
+    if assigned_to:
+        states = [s for s in states if s.assigned_to == assigned_to]
 
     return [
         {
@@ -40,6 +43,12 @@ async def list_conversations(
             "message_count": s.message_count,
             "products_mentioned": s.products_mentioned or [],
             "last_message_at": s.last_message_at.isoformat() if s.last_message_at else None,
+            "assigned_to": s.assigned_to or "",
+            "response_mode": s.response_mode or "ai_auto",
+            "pending_reply": s.pending_reply or "",
+            "pending_product_ids": s.pending_product_ids or [],
+            "escalated": s.escalated or False,
+            "escalation_reason": s.escalation_reason or "",
             "created_at": s.created_at.isoformat() if s.created_at else None,
         }
         for s in states
