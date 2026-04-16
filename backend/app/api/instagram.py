@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, Request, Query, HTTPException
 from fastapi.responses import PlainTextResponse
 from app.services.intent_scorer import score_conversation
+from app.services.category_tagger import auto_tag_conversation
 from app.core.database import async_session
 from app.models.conversation_state import ConversationState
 from app.models.customer import Customer
@@ -301,6 +302,14 @@ async def update_conversation_state(
         state.message_count = (state.message_count or 0) + len(new_messages)
         state.last_message_at = datetime.utcnow()
         state.updated_at = datetime.utcnow()
+
+        # Auto-tag the conversation
+        try:
+            tags = await auto_tag_conversation(list(state.messages or []))
+            if tags:
+                state.categories = tags
+        except Exception as e:
+            print(f"Auto-tagging error: {e}")
 
         await session.commit()
 

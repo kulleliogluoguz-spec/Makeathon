@@ -17,21 +17,25 @@ async def list_customers(
     search: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
     source: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """List customers. Supports search by name/handle/email/phone, filter by tag, filter by source."""
     query = select(Customer)
 
     if search:
-        term = f"%{search.lower()}%"
-        query = query.where(
-            or_(
-                Customer.display_name.ilike(term),
-                Customer.handle.ilike(term),
-                Customer.email.ilike(term),
-                Customer.phone.ilike(term),
+        terms = search.strip().split()
+        for word in terms:
+            w = f"%{word.lower()}%"
+            query = query.where(
+                or_(
+                    Customer.display_name.ilike(w),
+                    Customer.handle.ilike(w),
+                    Customer.email.ilike(w),
+                    Customer.phone.ilike(w),
+                    Customer.whatsapp_phone.ilike(w),
+                )
             )
-        )
 
     if source:
         query = query.where(Customer.source == source)
@@ -43,6 +47,21 @@ async def list_customers(
     # Filter by tag (post-query, since tags are JSON)
     if tag:
         customers = [c for c in customers if tag in (c.tags or [])]
+
+    # Filter by conversation category
+    if category:
+        from app.models.conversation_state import ConversationState
+        conv_result = await db.execute(select(ConversationState))
+        all_convs = conv_result.scalars().all()
+        matching_ids = set()
+        for conv in all_convs:
+            if category in (conv.categories or []):
+                if conv.sender_id:
+                    matching_ids.add(conv.sender_id)
+        customers = [
+            c for c in customers
+            if c.instagram_sender_id in matching_ids or c.whatsapp_phone in matching_ids
+        ]
 
     return [_serialize(c) for c in customers]
 

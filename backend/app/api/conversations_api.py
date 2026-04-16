@@ -1,6 +1,7 @@
 """Conversations dashboard API - list and view conversation states."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -11,12 +12,19 @@ router = APIRouter()
 
 
 @router.get("/conversations/")
-async def list_conversations(db: AsyncSession = Depends(get_db)):
+async def list_conversations(
+    tag: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
     """List all conversations ordered by most recent activity."""
     result = await db.execute(
         select(ConversationState).order_by(desc(ConversationState.last_message_at))
     )
     states = result.scalars().all()
+
+    if tag:
+        states = [s for s in states if tag in (s.categories or [])]
+
     return [
         {
             "id": s.id,
@@ -28,6 +36,7 @@ async def list_conversations(db: AsyncSession = Depends(get_db)):
             "signals": s.signals or [],
             "next_action": s.next_action,
             "score_breakdown": s.score_breakdown,
+            "categories": s.categories or [],
             "message_count": s.message_count,
             "products_mentioned": s.products_mentioned or [],
             "last_message_at": s.last_message_at.isoformat() if s.last_message_at else None,
@@ -59,6 +68,7 @@ async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_
         "score_history": state.score_history or [],
         "messages": state.messages or [],
         "message_count": state.message_count,
+        "categories": state.categories or [],
         "products_mentioned": state.products_mentioned or [],
         "last_message_at": state.last_message_at.isoformat() if state.last_message_at else None,
         "created_at": state.created_at.isoformat() if state.created_at else None,

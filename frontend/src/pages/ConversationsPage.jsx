@@ -53,10 +53,17 @@ export default function ConversationsPage() {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [allCategories, setAllCategories] = useState([]);
+  const [activeTag, setActiveTag] = useState('');
+
+  useEffect(() => {
+    fetch('/api/v1/categories/').then(r => r.json()).then(setAllCategories).catch(() => {});
+  }, []);
 
   const loadConversations = async () => {
     try {
-      const resp = await fetch('/api/v1/dashboard/conversations/');
+      const params = activeTag ? `?tag=${activeTag}` : '';
+      const resp = await fetch(`/api/v1/dashboard/conversations/${params}`);
       const data = await resp.json();
       setConversations(data);
     } catch (e) { console.error(e); }
@@ -65,9 +72,9 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     loadConversations();
-    const interval = setInterval(loadConversations, 10000); // refresh every 10s
+    const interval = setInterval(loadConversations, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeTag]);
 
   const openDetail = async (id) => {
     setSelected(id);
@@ -84,6 +91,31 @@ export default function ConversationsPage() {
       <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '2rem' }}>
         Live view of all customer conversations with intent scoring
       </p>
+
+      {allCategories.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <button
+            onClick={() => setActiveTag('')}
+            style={{
+              fontSize: '0.75rem', padding: '4px 12px', borderRadius: '9999px',
+              background: !activeTag ? '#000' : '#fff', color: !activeTag ? '#fff' : '#374151',
+              border: '1px solid #e5e7eb', cursor: 'pointer',
+            }}
+          >All</button>
+          {allCategories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setActiveTag(activeTag === c.slug ? '' : c.slug)}
+              style={{
+                fontSize: '0.75rem', padding: '4px 12px', borderRadius: '9999px',
+                background: activeTag === c.slug ? c.color : '#fff',
+                color: activeTag === c.slug ? '#fff' : '#374151',
+                border: '1px solid #e5e7eb', cursor: 'pointer',
+              }}
+            >{c.name}</button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ color: '#9ca3af' }}>Loading...</div>
@@ -121,6 +153,20 @@ export default function ConversationsPage() {
                   <StageBadge stage={c.stage} />
                 </div>
                 <ScoreGauge score={c.intent_score} />
+                {c.categories && c.categories.length > 0 && (
+                  <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {c.categories.map((slug) => {
+                      const cat = allCategories.find(x => x.slug === slug);
+                      if (!cat) return null;
+                      return (
+                        <span key={slug} style={{
+                          fontSize: '0.7rem', padding: '2px 8px', borderRadius: '9999px',
+                          background: cat.color + '20', color: cat.color, fontWeight: 500,
+                        }}>{cat.name}</span>
+                      );
+                    })}
+                  </div>
+                )}
                 {c.signals && c.signals.length > 0 && (
                   <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                     {c.signals.slice(0, 3).map((s, i) => (

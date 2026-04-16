@@ -42,16 +42,26 @@ function SourceBadge({ source }) {
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
-  const [search, setSearch] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
+  const [phoneFilter, setPhoneFilter] = useState('');
+  const [handleFilter, setHandleFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [selected, setSelected] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [conversations, setConversations] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
+  const [categoryFilter, setCategoryFilter] = useState('');
+
+  useEffect(() => {
+    fetch('/api/v1/categories/').then(r => r.json()).then(setAllCategories).catch(() => {});
+  }, []);
 
   const load = async () => {
     const params = new URLSearchParams();
-    if (search) params.append('search', search);
+    const combined = [nameFilter, phoneFilter, handleFilter].filter(Boolean).join(' ');
+    if (combined) params.append('search', combined);
     if (sourceFilter) params.append('source', sourceFilter);
+    if (categoryFilter) params.append('category', categoryFilter);
     try {
       const resp = await fetch(`/api/v1/customers/?${params}`);
       setCustomers(await resp.json());
@@ -62,7 +72,7 @@ export default function CustomersPage() {
     load();
     const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
-  }, [search, sourceFilter]);
+  }, [nameFilter, phoneFilter, handleFilter, sourceFilter, categoryFilter]);
 
   const openCustomer = async (customer) => {
     setSelected(customer);
@@ -106,14 +116,39 @@ export default function CustomersPage() {
         >+ Add Customer</button>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr 1fr',
+        gap: '0.5rem',
+        marginBottom: '1rem',
+      }}>
         <input
           type="text"
-          placeholder="Search by name, handle, email, phone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name..."
+          value={nameFilter}
+          onChange={(e) => setNameFilter(e.target.value)}
           style={{
-            flex: 1, padding: '0.5rem 1rem', fontSize: '0.875rem',
+            padding: '0.5rem 1rem', fontSize: '0.875rem',
+            border: '1px solid #e5e7eb', borderRadius: '9999px', outline: 'none',
+          }}
+        />
+        <input
+          type="text"
+          placeholder="Phone number..."
+          value={phoneFilter}
+          onChange={(e) => setPhoneFilter(e.target.value)}
+          style={{
+            padding: '0.5rem 1rem', fontSize: '0.875rem',
+            border: '1px solid #e5e7eb', borderRadius: '9999px', outline: 'none',
+          }}
+        />
+        <input
+          type="text"
+          placeholder="Email or @handle..."
+          value={handleFilter}
+          onChange={(e) => setHandleFilter(e.target.value)}
+          style={{
+            padding: '0.5rem 1rem', fontSize: '0.875rem',
             border: '1px solid #e5e7eb', borderRadius: '9999px', outline: 'none',
           }}
         />
@@ -123,15 +158,42 @@ export default function CustomersPage() {
           style={{
             padding: '0.5rem 1rem', fontSize: '0.875rem',
             border: '1px solid #e5e7eb', borderRadius: '9999px', outline: 'none',
+            background: '#fff',
           }}
         >
-          <option value="">All sources</option>
+          <option value="">All channels</option>
           <option value="instagram">Instagram</option>
           <option value="whatsapp">WhatsApp</option>
-          <option value="manual">Manual</option>
           <option value="livechat">Live Chat</option>
+          <option value="manual">Manual</option>
         </select>
       </div>
+
+      {allCategories.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+          <button
+            onClick={() => setCategoryFilter('')}
+            style={{
+              fontSize: '0.75rem', padding: '4px 12px', borderRadius: '9999px',
+              background: !categoryFilter ? '#000' : '#fff',
+              color: !categoryFilter ? '#fff' : '#374151',
+              border: '1px solid #e5e7eb', cursor: 'pointer',
+            }}
+          >All categories</button>
+          {allCategories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setCategoryFilter(categoryFilter === c.slug ? '' : c.slug)}
+              style={{
+                fontSize: '0.75rem', padding: '4px 12px', borderRadius: '9999px',
+                background: categoryFilter === c.slug ? c.color : '#fff',
+                color: categoryFilter === c.slug ? '#fff' : '#374151',
+                border: '1px solid #e5e7eb', cursor: 'pointer',
+              }}
+            >{c.name}</button>
+          ))}
+        </div>
+      )}
 
       {customers.length === 0 ? (
         <div style={{

@@ -32,6 +32,9 @@ class ConversationState(Base):
     # Message history (full transcript for dashboard)
     messages = Column(JSON, default=list)  # [{role, content, timestamp}]
 
+    # Categories
+    categories = Column(JSON, default=list)  # list of category slugs
+
     # Metadata
     message_count = Column(Integer, default=0)
     products_mentioned = Column(JSON, default=list)  # product IDs mentioned
