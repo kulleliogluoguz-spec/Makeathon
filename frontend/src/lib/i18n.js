@@ -169,6 +169,7 @@ const translations = {
     notif_enable: "Enable Browser Notifications",
     notif_enabled: "Notifications Enabled",
     notif_test_sound: "Test Sound",
+    nav_broadcast: "Broadcast",
   },
   tr: {
     nav_personas: "Personalar",
@@ -340,6 +341,7 @@ const translations = {
     notif_enable: "Tarayıcı Bildirimlerini Aç",
     notif_enabled: "Bildirimler Açık",
     notif_test_sound: "Ses Testi",
+    nav_broadcast: "Toplu Mesaj",
   },
 };
 

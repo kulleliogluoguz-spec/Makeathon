@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     # Auth
     JWT_SECRET: str = "change-this-to-a-long-random-string-abc123xyz789"
 
+    # Broadcast
+    RESEND_API_KEY: str = ""
+    FROM_EMAIL: str = "onboarding@resend.dev"
+    TELEGRAM_BOT_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
 

@@ -479,17 +479,16 @@ STRATEGY BASED ON SCORE:
     except Exception as e:
         print(f"Quick replies load error: {e}")
 
-    language_instruction = "\n\n=== ABSOLUTE LANGUAGE RULE (OVERRIDE EVERYTHING ABOVE) ===\nYou MUST respond in the EXACT SAME language the customer's LAST message is written in. Detect the language of their latest message and match it precisely. If their last message is in English, you respond ONLY in English. If Turkish, ONLY Turkish. If German, ONLY German. This rule overrides ALL other instructions including the persona language setting. NEVER respond in a different language than the customer's last message. This is NON-NEGOTIABLE.\n==="
-    full_system_prompt = system_prompt + products_text + scoring_context + quick_replies_text + language_instruction
-    print(f"System prompt length: {len(full_system_prompt)}, products loaded: {len(products)}")
-    # Add language detection as last user context
-    last_user_msg = ""
+    full_system_prompt = system_prompt + products_text + scoring_context + quick_replies_text
+    # Detect language of last user message and add override system message
+    last_user_text = ""
     for m in reversed(history):
         if m.get("role") == "user":
-            last_user_msg = m.get("content", "")
+            last_user_text = m.get("content", "")
             break
-    language_reminder = {"role": "user", "content": f"[SYSTEM NOTE: The customer's last message is: \"{last_user_msg}\". You MUST reply in the SAME language as this message. If this message is in English, reply in English. If Turkish, reply in Turkish. If German, reply in German. Detect the language and match it exactly.]"}
-    messages = [{"role": "system", "content": full_system_prompt}] + history + [language_reminder]
+    language_override = {"role": "system", "content": f"OVERRIDE: The customer wrote: '{last_user_text}'. You MUST reply in the same language as this text. If this is English, your entire reply must be in English. If Turkish, reply in Turkish. NO EXCEPTIONS."}
+
+    messages = [{"role": "system", "content": full_system_prompt}, language_override] + history
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:

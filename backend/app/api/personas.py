@@ -78,6 +78,7 @@ def build_system_prompt(persona: Persona) -> str:
         for situation, response in persona.emotional_responses.items():
             prompt_parts.append(f"- When caller is {situation}: {response}")
 
+    prompt_parts.append("\nIMPORTANT: Always respond in the same language the customer is currently using. Detect their language from their latest message and match it exactly.")
     return "\n".join(prompt_parts)
 
 
