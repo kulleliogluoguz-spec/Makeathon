@@ -22,6 +22,7 @@ from app.services.category_seeder import seed_builtin_categories
 from app.api.settings import router as settings_router
 from app.api.persona_templates import router as templates_router
 from app.api.conversation_export import router as export_router
+from app.api.livechat import router as livechat_router
 
 # Create media directory
 Path("media").mkdir(exist_ok=True)
@@ -72,6 +73,7 @@ app.include_router(categories_router, prefix="/api/v1", tags=["Categories"])
 app.include_router(settings_router, prefix="/api/v1", tags=["Settings"])
 app.include_router(templates_router, prefix="/api/v1", tags=["Templates"])
 app.include_router(export_router, prefix="/api/v1/dashboard", tags=["Export"])
+app.include_router(livechat_router, tags=["LiveChat"])
 
 
 @app.get("/health")
