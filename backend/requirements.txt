@@ -16,6 +16,6 @@ pytz==2024.1
 reportlab==4.2.5
 pyjwt==2.9.0
 bcrypt==4.2.0
-resend==2.5.0
+resend==2.5.1
 python-telegram-bot==21.5
-fashn==1.0.0
+fashn==0.6.0
