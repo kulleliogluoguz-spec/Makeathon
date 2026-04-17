@@ -23,12 +23,12 @@ class BusinessSettings(Base):
     timezone = Column(String, default="Europe/Berlin")
 
     # Auto-reply when outside business hours
-    outside_hours_message = Column(Text, default="Şu anda mesai saatleri dışındayız. En kısa sürede size dönüş yapacağız. Mesai saatlerimiz: Pazartesi-Cuma 09:00-18:00")
+    outside_hours_message = Column(Text, default="We are currently outside of business hours. We will get back to you as soon as possible. Business hours: Monday-Friday 09:00-18:00")
     outside_hours_enabled = Column(Boolean, default=True)
 
     # Holiday dates: ["2026-01-01", "2026-04-23", ...]
     holidays = Column(JSON, default=list)
-    holiday_message = Column(Text, default="Bugün tatil nedeniyle kapalıyız. İlk iş günü size dönüş yapacağız.")
+    holiday_message = Column(Text, default="We are closed today due to a holiday. We will get back to you on the next business day.")
 
     # Auto-archive inactive conversations after N hours (0 = disabled)
     auto_archive_hours = Column(String, default="48")

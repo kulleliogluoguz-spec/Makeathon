@@ -277,7 +277,7 @@ export default function ConversationsPage() {
                         <span key={slug} style={{
                           fontSize: '0.7rem', padding: '2px 8px', borderRadius: '9999px',
                           background: cat.color + '20', color: cat.color, fontWeight: 500,
-                        }}>{cat.name}</span>
+                        }}>{t(`cat_${cat.slug}`) !== `cat_${cat.slug}` ? t(`cat_${cat.slug}`) : cat.name}</span>
                       );
                     })}
                   </div>

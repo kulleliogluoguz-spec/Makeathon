@@ -236,7 +236,7 @@ export default function AnalyticsPage() {
           ) : (
             categories.map((cat, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6', fontSize: '0.85rem' }}>
-                <span>{cat.name.replace(/_/g, ' ')}</span>
+                <span>{t(`cat_${cat.slug}`) !== `cat_${cat.slug}` ? t(`cat_${cat.slug}`) : cat.name.replace(/_/g, ' ')}</span>
                 <span style={{ fontWeight: 600 }}>{cat.count}</span>
               </div>
             ))

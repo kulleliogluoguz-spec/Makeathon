@@ -213,7 +213,7 @@ export default function CustomersPage() {
                 color: categoryFilter === c.slug ? '#fff' : '#374151',
                 border: '1px solid #e5e7eb', cursor: 'pointer',
               }}
-            >{c.name}</button>
+            >{t(`cat_${c.slug}`) !== `cat_${c.slug}` ? t(`cat_${c.slug}`) : c.name}</button>
           ))}
         </div>
       )}

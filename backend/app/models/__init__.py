@@ -9,3 +9,4 @@ from app.models.quick_reply import QuickReply  # noqa
 from app.models.user import User  # noqa
 from app.models.team import Team  # noqa
 from app.models.broadcast import BroadcastCampaign  # noqa
+from app.models.lead import SavedLead  # noqa

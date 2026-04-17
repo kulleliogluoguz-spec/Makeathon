@@ -30,10 +30,10 @@ async def get_settings() -> dict:
             return {
                 "working_hours": DEFAULT_HOURS,
                 "timezone": "Europe/Berlin",
-                "outside_hours_message": "Şu anda mesai saatleri dışındayız. En kısa sürede size dönüş yapacağız.",
+                "outside_hours_message": "We are currently outside of business hours. We will get back to you as soon as possible.",
                 "outside_hours_enabled": True,
                 "holidays": [],
-                "holiday_message": "Bugün tatil nedeniyle kapalıyız.",
+                "holiday_message": "We are closed today due to a holiday.",
                 "auto_archive_hours": "48",
             }
         return {

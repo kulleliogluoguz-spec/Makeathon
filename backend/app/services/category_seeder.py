@@ -8,19 +8,19 @@ from app.models.category import Category
 BUILTIN_CATEGORIES = [
     {
         "slug": "high_sales_potential",
-        "name": "Yüksek Satış Potansiyeli",
+        "name": "High Sales Potential",
         "description": "Customer has very strong buying signals: asking about price, shipping, availability, ready to commit, showing urgency or clear intent to purchase soon. Intent score typically 70+.",
         "color": "#10b981",
     },
     {
         "slug": "sales_potential",
-        "name": "Satış Potansiyeli Var",
+        "name": "Sales Potential",
         "description": "Customer is interested in products, asking follow-up questions, exploring options, showing moderate buying interest. Intent score typically 35-70.",
         "color": "#3b82f6",
     },
     {
         "slug": "no_sales_potential",
-        "name": "Satış Potansiyeli Yok",
+        "name": "No Sales Potential",
         "description": "Customer is just browsing, saying hello, asking general information, or has explicitly stated they don't want to buy. Intent score typically under 35.",
         "color": "#94a3b8",
     },
@@ -46,7 +46,12 @@ async def seed_builtin_categories():
         for cat_data in BUILTIN_CATEGORIES:
             result = await session.execute(select(Category).where(Category.slug == cat_data["slug"]))
             existing = result.scalar_one_or_none()
-            if not existing:
+            if existing:
+                # Update name and description if changed
+                existing.name = cat_data["name"]
+                existing.description = cat_data["description"]
+                existing.color = cat_data["color"]
+            else:
                 category = Category(
                     slug=cat_data["slug"],
                     name=cat_data["name"],
