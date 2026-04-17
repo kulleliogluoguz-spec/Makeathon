@@ -382,6 +382,38 @@ export default function ConversationsPage() {
                   </div>
                 )}
 
+                {detail.products_mentioned && detail.products_mentioned.length > 0 && (
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', background: '#f9fafb', marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>PRODUCTS IN CONVERSATION</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {detail.products_mentioned.slice(0, 5).map((pid) => (
+                        <button
+                          key={pid}
+                          onClick={async () => {
+                            if (!confirm('Generate virtual try-on + video? This uses FASHN.ai credits.')) return;
+                            const resp = await fetch(`/api/v1/tryon/${pid}`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ video: true }),
+                            });
+                            const data = await resp.json();
+                            if (data.success) {
+                              alert(`Try-on generated!\nImage: ${data.model_image_url}\nVideo: ${data.video_url || 'Generating...'}`);
+                            } else {
+                              alert(`Error: ${data.error}`);
+                            }
+                          }}
+                          style={{
+                            padding: '4px 12px', fontSize: '0.7rem',
+                            background: '#8b5cf6', color: '#fff',
+                            border: 'none', borderRadius: '9999px', cursor: 'pointer',
+                          }}
+                        >Try On: {pid.slice(0, 8)}...</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>

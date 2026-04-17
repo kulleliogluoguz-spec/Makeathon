@@ -43,6 +43,22 @@ async def send_telegram_image(chat_id: str, image_url: str, caption: str = "") -
         return {"success": False, "error": str(e)}
 
 
+async def send_telegram_video(chat_id: str, video_url: str, caption: str = "") -> dict:
+    """Send a video via Telegram Bot API."""
+    if not TELEGRAM_BOT_TOKEN:
+        return {"success": False, "error": "TELEGRAM_BOT_TOKEN not set"}
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{TELEGRAM_API}/sendVideo",
+                json={"chat_id": chat_id, "video": video_url, "caption": caption},
+            )
+            data = resp.json()
+            return {"success": data.get("ok", False)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 async def set_webhook(webhook_url: str) -> dict:
     if not TELEGRAM_BOT_TOKEN:
         return {"success": False, "error": "TELEGRAM_BOT_TOKEN not set"}

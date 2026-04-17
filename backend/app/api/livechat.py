@@ -296,7 +296,7 @@ async def websocket_chat(websocket: WebSocket, session_id: str = "", persona_id:
                 })
 
                 # Generate AI reply
-                reply_text, product_images = await generate_livechat_reply(
+                reply_text, product_images, recommend_ids, all_products = await generate_livechat_reply(
                     session_id=session_id,
                     persona_id=persona_id,
                     user_message=user_text,
@@ -318,6 +318,13 @@ async def websocket_chat(websocket: WebSocket, session_id: str = "", persona_id:
                 if product_images:
                     response["images"] = product_images
                 await websocket.send_text(json.dumps(response))
+
+                # Auto-trigger try-on for first recommended product
+                if recommend_ids and all_products:
+                    first_product = next((p for p in all_products if p["id"] == recommend_ids[0]), None)
+                    if first_product and first_product.get("image_url"):
+                        import asyncio
+                        asyncio.create_task(_handle_tryon_async_livechat(websocket, session_id, first_product))
 
     except WebSocketDisconnect:
         active_connections.pop(session_id, None)
@@ -440,11 +447,39 @@ async def generate_livechat_reply(session_id: str, persona_id: str, user_message
             if prod and prod.get("image_url"):
                 product_images.append(prod["image_url"])
 
-        return reply_text, product_images
+        return reply_text, product_images, recommend_ids, products
 
     except Exception as e:
         print(f"LLM error: {e}")
-        return "Sorry, I'm having a technical issue. Please try again!", []
+        return "Sorry, I'm having a technical issue. Please try again!", [], [], []
+
+
+async def _handle_tryon_async_livechat(websocket: WebSocket, session_id: str, product: dict):
+    """Background task: generate try-on image + video and send via WebSocket."""
+    try:
+        from app.services.fashn_service import product_to_model, image_to_video
+
+        model_result = await product_to_model(product["image_url"])
+        if model_result["success"]:
+            await websocket.send_text(json.dumps({
+                "type": "reply",
+                "text": "",
+                "images": [model_result["image_url"]],
+            }))
+
+            video_result = await image_to_video(model_result["image_url"])
+            if video_result["success"]:
+                await websocket.send_text(json.dumps({
+                    "type": "reply",
+                    "text": "",
+                    "video": video_result["video_url"],
+                }))
+            else:
+                print(f"Video generation failed: {video_result['error']}")
+        else:
+            print(f"Try-on failed: {model_result['error']}")
+    except Exception as e:
+        print(f"Try-on async error: {e}")
 
 
 async def save_livechat_to_db(session_id: str, persona_id: str, visitor_name: str, messages: list):

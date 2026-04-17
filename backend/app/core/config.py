@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "onboarding@resend.dev"
     TELEGRAM_BOT_TOKEN: str = ""
 
+    # FASHN.ai Virtual Try-On
+    FASHN_API_KEY: str = ""
+
     class Config:
         env_file = ".env"
 

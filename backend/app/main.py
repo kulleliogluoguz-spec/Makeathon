@@ -33,6 +33,7 @@ from app.api.teams import router as teams_router
 from app.api.agent_performance import router as perf_router
 from app.api.broadcast import router as broadcast_router
 from app.api.telegram import router as telegram_router
+from app.api.tryon import router as tryon_router
 
 # Create media directory
 Path("media").mkdir(exist_ok=True)
@@ -94,6 +95,7 @@ app.include_router(teams_router, prefix="/api/v1", tags=["Teams"])
 app.include_router(perf_router, prefix="/api/v1", tags=["Performance"])
 app.include_router(broadcast_router, prefix="/api/v1", tags=["Broadcast"])
 app.include_router(telegram_router, prefix="/api/v1", tags=["Telegram"])
+app.include_router(tryon_router, prefix="/api/v1", tags=["TryOn"])
 
 
 @app.get("/health")

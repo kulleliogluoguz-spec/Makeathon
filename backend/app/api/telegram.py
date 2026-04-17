@@ -73,10 +73,18 @@ async def telegram_webhook(request: Request):
             pass
 
     await upsert_telegram_customer(chat_id, sender_name)
-    reply_text, product_images = await get_telegram_reply(chat_id, text)
+    reply_text, product_images, recommend_ids, all_products = await get_telegram_reply(chat_id, text)
     await send_telegram_message(chat_id, reply_text)
     for img_url in product_images[:3]:
         await send_telegram_image(chat_id, img_url)
+
+    # Auto-trigger try-on for first recommended product
+    if recommend_ids and all_products:
+        first_product = next((p for p in all_products if p["id"] == recommend_ids[0]), None)
+        if first_product and first_product.get("image_url"):
+            import asyncio
+            asyncio.create_task(_handle_tryon_async_telegram(chat_id, first_product))
+
     await save_telegram_conversation(chat_id, text, reply_text)
     return {"status": "ok"}
 
@@ -186,10 +194,31 @@ async def get_telegram_reply(chat_id: str, user_message: str):
                 product_images.append(prod["image_url"])
 
         history.append({"role": "assistant", "content": reply_text})
-        return reply_text, product_images
+        return reply_text, product_images, recommend_ids, products
     except Exception as e:
         print(f"Telegram LLM error: {e}")
-        return "Sorry, technical issue. Please try again!", []
+        return "Sorry, technical issue. Please try again!", [], [], []
+
+
+async def _handle_tryon_async_telegram(chat_id: str, product: dict):
+    """Background task: generate try-on image + video and send to customer."""
+    try:
+        from app.services.fashn_service import product_to_model, image_to_video
+        from app.services.telegram_sender import send_telegram_video
+
+        model_result = await product_to_model(product["image_url"])
+        if model_result["success"]:
+            await send_telegram_image(chat_id, model_result["image_url"])
+
+            video_result = await image_to_video(model_result["image_url"])
+            if video_result["success"]:
+                await send_telegram_video(chat_id, video_result["video_url"], f"{product['name']} - Fashion Video")
+            else:
+                print(f"Video generation failed: {video_result['error']}")
+        else:
+            print(f"Try-on failed: {model_result['error']}")
+    except Exception as e:
+        print(f"Try-on async error: {e}")
 
 
 async def upsert_telegram_customer(chat_id: str, name: str = ""):

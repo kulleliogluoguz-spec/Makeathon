@@ -124,7 +124,7 @@ async def handle_webhook(request: Request):
                 continue
 
             # Generate reply
-            reply_text, product_images = await get_messenger_reply(sender_id, text)
+            reply_text, product_images, recommend_ids, all_products = await get_messenger_reply(sender_id, text)
 
             # If ai_suggest mode, save as pending
             if response_mode == "ai_suggest":
@@ -148,6 +148,13 @@ async def handle_webhook(request: Request):
             # Send product images
             for img_url in product_images[:3]:
                 await send_messenger_image(sender_id, img_url)
+
+            # Auto-trigger try-on for first recommended product
+            if recommend_ids and all_products:
+                first_product = next((p for p in all_products if p["id"] == recommend_ids[0]), None)
+                if first_product and first_product.get("image_url"):
+                    import asyncio
+                    asyncio.create_task(_handle_tryon_async_messenger(sender_id, first_product))
 
             # Save to conversation state
             await save_messenger_conversation(sender_id, text, reply_text, product_images)
@@ -285,11 +292,56 @@ async def get_messenger_reply(sender_id: str, user_message: str):
                 product_images.append(prod["image_url"])
 
         history.append({"role": "assistant", "content": reply_text})
-        return reply_text, product_images
+        return reply_text, product_images, recommend_ids, products
 
     except Exception as e:
         print(f"LLM Error: {e}")
-        return "Sorry, I'm having a technical issue. Please try again!", []
+        return "Sorry, I'm having a technical issue. Please try again!", [], [], []
+
+
+async def send_messenger_video(recipient_id: str, video_url: str):
+    """Send a video via Messenger API."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://graph.facebook.com/v21.0/me/messages",
+                headers={
+                    "Authorization": f"Bearer {PAGE_ACCESS_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "recipient": {"id": recipient_id},
+                    "message": {
+                        "attachment": {
+                            "type": "video",
+                            "payload": {"url": video_url, "is_reusable": True},
+                        }
+                    },
+                },
+            )
+            print(f"Messenger Video [{resp.status_code}]: {video_url[:50]}")
+    except Exception as e:
+        print(f"Messenger video send error: {e}")
+
+
+async def _handle_tryon_async_messenger(sender_id: str, product: dict):
+    """Background task: generate try-on image + video and send to customer."""
+    try:
+        from app.services.fashn_service import product_to_model, image_to_video
+
+        model_result = await product_to_model(product["image_url"])
+        if model_result["success"]:
+            await send_messenger_image(sender_id, model_result["image_url"])
+
+            video_result = await image_to_video(model_result["image_url"])
+            if video_result["success"]:
+                await send_messenger_video(sender_id, video_result["video_url"])
+            else:
+                print(f"Video generation failed: {video_result['error']}")
+        else:
+            print(f"Try-on failed: {model_result['error']}")
+    except Exception as e:
+        print(f"Try-on async error: {e}")
 
 
 async def send_messenger_reply(recipient_id: str, text: str):

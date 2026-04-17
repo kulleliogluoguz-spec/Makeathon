@@ -547,12 +547,68 @@ STRATEGY BASED ON SCORE:
                     await send_instagram_image(sender_id, product["image_url"])
                 else:
                     print(f"Product not found or no image_url for pid: {pid}")
+
+            # Auto-trigger try-on for first recommended product
+            if recommend_product_ids:
+                first_product = next((p for p in products if p["id"] == recommend_product_ids[0]), None)
+                if first_product and first_product.get("image_url"):
+                    import asyncio
+                    asyncio.create_task(_handle_tryon_async_instagram(sender_id, first_product))
+
             return None  # Already sent reply + images
 
         return reply_text
     except Exception as e:
         print(f"LLM Error: {e}")
         return "Sorry, I am having a technical issue. Please try again!"
+
+async def send_instagram_video(recipient_id: str, video_url: str):
+    """Send a video via Instagram Messaging API."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://graph.instagram.com/v21.0/me/messages",
+                headers={
+                    "Authorization": f"Bearer {ACCESS_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "recipient": {"id": recipient_id},
+                    "message": {
+                        "attachment": {
+                            "type": "video",
+                            "payload": {"url": video_url},
+                        }
+                    },
+                },
+            )
+            print(f"IG Video [{resp.status_code}]: {video_url[:50]}")
+    except Exception as e:
+        print(f"IG video send error: {e}")
+
+
+async def _handle_tryon_async_instagram(sender_id: str, product: dict):
+    """Background task: generate try-on image + video and send to customer."""
+    try:
+        from app.services.fashn_service import product_to_model, image_to_video
+
+        # Step 1: Generate try-on image
+        model_result = await product_to_model(product["image_url"])
+        if model_result["success"]:
+            # Send the try-on image
+            await send_instagram_image(sender_id, model_result["image_url"])
+
+            # Step 2: Generate video (silently)
+            video_result = await image_to_video(model_result["image_url"])
+            if video_result["success"]:
+                await send_instagram_video(sender_id, video_result["video_url"])
+            else:
+                print(f"Video generation failed: {video_result['error']}")
+        else:
+            print(f"Try-on failed: {model_result['error']}")
+    except Exception as e:
+        print(f"Try-on async error: {e}")
+
 
 async def send_reply(recipient_id, text):
     try:
