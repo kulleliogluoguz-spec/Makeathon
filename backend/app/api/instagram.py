@@ -141,6 +141,33 @@ async def webhook(request: Request):
                         print(f"Auto-escalated {sender}: score {conv_state.intent_score}")
             except Exception as e:
                 print(f"Escalation check error: {e}")
+
+            # Auto-trigger HappyRobot call for very high intent
+            try:
+                async with asess() as sess:
+                    from app.models.customer import Customer
+                    conv_result = await sess.execute(select(CS).where(CS.sender_id == sender))
+                    conv_state = conv_result.scalar_one_or_none()
+                    if conv_state and conv_state.intent_score >= 90:
+                        cust_result = await sess.execute(
+                            select(Customer).where(Customer.instagram_sender_id == sender)
+                        )
+                        customer = cust_result.scalar_one_or_none()
+                        if customer and customer.phone and not conv_state.escalation_reason.startswith("call_triggered"):
+                            from app.services.happyrobot_service import trigger_outbound_call
+                            import asyncio
+                            asyncio.create_task(
+                                trigger_outbound_call(
+                                    phone_number=customer.phone,
+                                    customer_name=customer.display_name or "",
+                                    context=f"High intent customer (score: {conv_state.intent_score}). Stage: {conv_state.stage}. They have been chatting about products and showing strong buying signals.",
+                                )
+                            )
+                            conv_state.escalation_reason = f"call_triggered_score_{conv_state.intent_score}"
+                            await sess.commit()
+                            print(f"HappyRobot call triggered for {sender}, score {conv_state.intent_score}")
+            except Exception as e:
+                print(f"HappyRobot auto-call error: {e}")
     return {"status": "ok"}
 
 async def get_active_persona_prompt():
@@ -479,7 +506,31 @@ STRATEGY BASED ON SCORE:
     except Exception as e:
         print(f"Quick replies load error: {e}")
 
-    full_system_prompt = system_prompt + products_text + scoring_context + quick_replies_text
+    # Add phone call offer instruction for high intent
+    call_offer_text = ""
+    if scoring_context:
+        try:
+            score = scoring.get("intent_score", 0)
+            if score >= 70:
+                call_offer_text = """
+
+## PHONE CALL OFFER
+The customer's intent score is high (70+). They are very interested in buying. You should naturally offer them a phone call to help complete their purchase. Here's how:
+
+1. FIRST, naturally mention: "If you'd like, we can call you right now to help you with your purchase — it'll only take a minute!"
+2. If they say yes, ask: "Would you like us to call you, or would you prefer our number so you can call us?"
+3. If they want YOU to call THEM, say: "Great! Just share your phone number and we'll call you right away! 📞"
+4. If they want YOUR number, say: "Of course! You can reach us at [COMPANY_PHONE]. We're looking forward to your call!"
+5. When the customer provides a phone number, respond with EXACTLY this JSON format:
+   {"message": "Perfect! We're calling you right now! 📞", "recommend_product_ids": [], "trigger_call": true, "call_number": "+XXXXXXXXXXX"}
+   Replace +XXXXXXXXXXX with the actual phone number they provided. Make sure to include country code.
+6. IMPORTANT: Only set trigger_call to true when the customer has EXPLICITLY provided their phone number. Never assume a phone number.
+7. Do NOT offer to call if you already offered in this conversation (check previous messages).
+"""
+        except Exception:
+            pass
+
+    full_system_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text
     # Detect language of last user message and add override system message
     last_user_text = ""
     for m in reversed(history):
@@ -520,6 +571,37 @@ STRATEGY BASED ON SCORE:
             except (json.JSONDecodeError, TypeError) as e:
                 print(f"JSON parse failed: {e}")
                 reply_text = reply_raw
+
+        # Detect phone call trigger
+        trigger_call = False
+        call_number = ""
+        if products:
+            try:
+                if isinstance(parsed, dict):
+                    trigger_call = parsed.get("trigger_call", False)
+                    call_number = parsed.get("call_number", "")
+            except Exception:
+                pass
+
+        # If call triggered, initiate HappyRobot call
+        if trigger_call and call_number:
+            import asyncio
+            try:
+                from app.models.customer import Customer
+                async with asess() as sess:
+                    cust_result = await sess.execute(
+                        select(Customer).where(Customer.instagram_sender_id == sender)
+                    )
+                    customer = cust_result.scalar_one_or_none()
+                    if customer:
+                        customer.phone = call_number
+                        await sess.commit()
+
+                recent_msgs = conversation_history.get(sender, [])[-5:]
+                context = " | ".join([f"{m['role']}: {m['content'][:50]}" for m in recent_msgs])
+                asyncio.create_task(_handle_happyrobot_call(sender, call_number, context))
+            except Exception as e:
+                print(f"Call trigger error: {e}")
 
         history.append({"role": "assistant", "content": reply_text})
 
@@ -608,6 +690,43 @@ async def _handle_tryon_async_instagram(sender_id: str, product: dict):
             print(f"Try-on failed: {model_result['error']}")
     except Exception as e:
         print(f"Try-on async error: {e}")
+
+
+async def _handle_happyrobot_call(sender_id: str, phone_number: str, context: str):
+    """Background task: trigger HappyRobot outbound call."""
+    try:
+        from app.services.happyrobot_service import trigger_outbound_call
+        from app.core.database import async_session as asess
+        from app.models.customer import Customer
+        from sqlalchemy import select
+
+        customer_name = ""
+        async with asess() as sess:
+            result = await sess.execute(
+                select(Customer).where(Customer.instagram_sender_id == sender_id)
+            )
+            cust = result.scalar_one_or_none()
+            if cust:
+                customer_name = cust.display_name or ""
+
+        import asyncio
+        await asyncio.sleep(2)
+
+        result = await trigger_outbound_call(
+            phone_number=phone_number,
+            customer_name=customer_name,
+            context=f"Customer was chatting on Instagram and showed high buying intent. Recent conversation: {context}",
+        )
+
+        if result.get("success"):
+            await send_reply(sender_id, "📞 We're connecting your call now! Please pick up in a moment.")
+            print(f"HappyRobot call initiated: {result.get('call_id')}")
+        else:
+            await send_reply(sender_id, "Sorry, we couldn't connect the call right now. Can we try again in a few minutes?")
+            print(f"HappyRobot call failed: {result.get('error')}")
+
+    except Exception as e:
+        print(f"HappyRobot call error: {e}")
 
 
 async def send_reply(recipient_id, text):

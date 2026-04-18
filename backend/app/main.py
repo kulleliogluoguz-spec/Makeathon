@@ -19,6 +19,7 @@ from app.api.conversations_api import router as conversations_api_router
 from app.api.customers import router as customers_router
 from app.api.categories import router as categories_router
 from app.services.category_seeder import seed_builtin_categories
+from app.services.demo_seeder import seed_demo_data
 from app.api.settings import router as settings_router
 from app.api.persona_templates import router as templates_router
 from app.api.conversation_export import router as export_router
@@ -35,6 +36,7 @@ from app.api.broadcast import router as broadcast_router
 from app.api.telegram import router as telegram_router
 from app.api.tryon import router as tryon_router
 from app.api.leads import router as leads_router
+from app.api.unipile_api import router as unipile_router
 
 # Create media directory
 Path("media").mkdir(exist_ok=True)
@@ -47,6 +49,7 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await seed_builtin_categories()
+    await seed_demo_data()
     yield
     # Shutdown
     await engine.dispose()
@@ -98,6 +101,7 @@ app.include_router(broadcast_router, prefix="/api/v1", tags=["Broadcast"])
 app.include_router(telegram_router, prefix="/api/v1", tags=["Telegram"])
 app.include_router(tryon_router, prefix="/api/v1", tags=["TryOn"])
 app.include_router(leads_router, prefix="/api/v1", tags=["Leads"])
+app.include_router(unipile_router, prefix="/api/v1", tags=["LinkedIn & Calls"])
 
 
 @app.get("/health")

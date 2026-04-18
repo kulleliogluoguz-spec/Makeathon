@@ -89,6 +89,7 @@ async def serve_widget_js(request: Request):
       align-self: center; font-size: 12px; color: #9ca3af;
       background: none; padding: 4px;
     }}
+    @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
     .lc-typing {{
       align-self: flex-start; padding: 10px 14px;
       background: #f3f4f6; border-radius: 12px;
@@ -205,6 +206,14 @@ async def serve_widget_js(request: Request):
             addImage('ai', url);
           }});
         }}
+        if (data.calling) {{
+          addMessage('system', '📞 Connecting your call now...');
+          var loader = document.createElement('div');
+          loader.className = 'lc-msg system';
+          loader.id = 'lc-call-loader';
+          loader.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border:2px solid #000;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div> Calling you now...</div>';
+          document.getElementById('lc-messages').appendChild(loader);
+        }}
       }}
     }};
 
@@ -296,7 +305,7 @@ async def websocket_chat(websocket: WebSocket, session_id: str = "", persona_id:
                 })
 
                 # Generate AI reply
-                reply_text, product_images, recommend_ids, all_products = await generate_livechat_reply(
+                reply_text, product_images, recommend_ids, all_products, trigger_call, call_number = await generate_livechat_reply(
                     session_id=session_id,
                     persona_id=persona_id,
                     user_message=user_text,
@@ -317,6 +326,11 @@ async def websocket_chat(websocket: WebSocket, session_id: str = "", persona_id:
                 response = {"type": "reply", "text": reply_text}
                 if product_images:
                     response["images"] = product_images
+                if trigger_call and call_number:
+                    response["calling"] = True
+                    response["call_number"] = call_number
+                    import asyncio
+                    asyncio.create_task(_handle_happyrobot_call_livechat(session_id, call_number, visitor_name))
                 await websocket.send_text(json.dumps(response))
 
                 # Auto-trigger try-on for first recommended product
@@ -407,7 +421,30 @@ async def generate_livechat_reply(session_id: str, persona_id: str, user_message
     except Exception as e:
         print(f"Quick replies load error: {e}")
 
-    full_prompt = system_prompt + products_text + scoring_context + quick_replies_text
+    # Add phone call offer instruction for high intent
+    call_offer_text = ""
+    if scoring_context:
+        try:
+            score = scoring.get("intent_score", 0)
+            if score >= 70:
+                call_offer_text = """
+
+## PHONE CALL OFFER
+The customer's intent score is high (70+). They are very interested in buying. You should naturally offer them a phone call to help complete their purchase. Here's how:
+
+1. FIRST, naturally mention: "If you'd like, we can call you right now to help you with your purchase — it'll only take a minute!"
+2. If they say yes, ask: "Would you like us to call you, or would you prefer our number so you can call us?"
+3. If they want YOU to call THEM, say: "Great! Just share your phone number and we'll call you right away! 📞"
+4. When the customer provides a phone number, respond with EXACTLY this JSON format:
+   {"message": "Perfect! We're calling you right now! 📞", "recommend_product_ids": [], "trigger_call": true, "call_number": "+XXXXXXXXXXX"}
+   Replace +XXXXXXXXXXX with the actual phone number they provided. Make sure to include country code.
+5. IMPORTANT: Only set trigger_call to true when the customer has EXPLICITLY provided their phone number.
+6. Do NOT offer to call if you already offered in this conversation.
+"""
+        except Exception:
+            pass
+
+    full_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text
 
     # Call LLM
     try:
@@ -441,17 +478,53 @@ async def generate_livechat_reply(session_id: str, persona_id: str, user_message
             except (json.JSONDecodeError, TypeError):
                 reply_text = reply_raw
 
+        # Detect phone call trigger
+        trigger_call = False
+        call_number = ""
+        if products:
+            try:
+                if isinstance(parsed, dict):
+                    trigger_call = parsed.get("trigger_call", False)
+                    call_number = parsed.get("call_number", "")
+            except Exception:
+                pass
+
         # Get image URLs for recommended products
         for pid in recommend_ids[:3]:
             prod = next((p for p in products if p["id"] == pid), None)
             if prod and prod.get("image_url"):
                 product_images.append(prod["image_url"])
 
-        return reply_text, product_images, recommend_ids, products
+        return reply_text, product_images, recommend_ids, products, trigger_call, call_number
 
     except Exception as e:
         print(f"LLM error: {e}")
-        return "Sorry, I'm having a technical issue. Please try again!", [], [], []
+        return "Sorry, I'm having a technical issue. Please try again!", [], [], [], False, ""
+
+
+async def _handle_happyrobot_call_livechat(session_id: str, phone_number: str, visitor_name: str):
+    """Background task: trigger HappyRobot outbound call for LiveChat."""
+    try:
+        from app.services.happyrobot_service import trigger_outbound_call
+        import asyncio
+        await asyncio.sleep(2)
+
+        recent_msgs = chat_sessions.get(session_id, {}).get("messages", [])[-5:]
+        context = " | ".join([f"{m['role']}: {m['content'][:50]}" for m in recent_msgs])
+
+        result = await trigger_outbound_call(
+            phone_number=phone_number,
+            customer_name=visitor_name,
+            context=f"Customer was chatting on LiveChat and showed high buying intent. Recent conversation: {context}",
+        )
+
+        if result.get("success"):
+            print(f"HappyRobot call initiated for livechat {session_id}: {result.get('call_id')}")
+        else:
+            print(f"HappyRobot call failed for livechat {session_id}: {result.get('error')}")
+
+    except Exception as e:
+        print(f"HappyRobot livechat call error: {e}")
 
 
 async def _handle_tryon_async_livechat(websocket: WebSocket, session_id: str, product: dict):

@@ -24,6 +24,11 @@ export default function LeadFinderPage() {
   const [outreachMsg, setOutreachMsg] = useState('');
   const [generatingMsg, setGeneratingMsg] = useState(false);
   const [activePreset, setActivePreset] = useState('');
+  const [linkedinKeywords, setLinkedinKeywords] = useState('');
+  const [linkedinResults, setLinkedinResults] = useState([]);
+  const [linkedinSearching, setLinkedinSearching] = useState(false);
+  const [autoCalling, setAutoCalling] = useState(false);
+  const [callResults, setCallResults] = useState([]);
 
   useEffect(() => {
     fetch('/api/v1/personas/').then(r => r.json()).then(setPersonas).catch(() => {});
@@ -108,6 +113,169 @@ export default function LeadFinderPage() {
     if (!confirm('Remove this lead?')) return;
     await fetch(`/api/v1/leads/saved/${id}`, { method: 'DELETE' });
     loadSaved();
+  };
+
+  const searchLinkedIn = async () => {
+    setLinkedinSearching(true);
+    try {
+      const resp = await fetch('/api/v1/linkedin/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords: linkedinKeywords, limit: 25 }),
+      });
+      const data = await resp.json();
+      setLinkedinResults(data.people || []);
+    } catch (e) { console.error(e); }
+    setLinkedinSearching(false);
+  };
+
+  const sendInvite = async (person) => {
+    const note = prompt('Connection request note (max 300 chars, leave empty for no note):',
+      `Hi ${person.first_name}, I came across your profile and would love to connect!`);
+    if (note === null) return;
+
+    try {
+      const resp = await fetch('/api/v1/linkedin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: person.provider_id, message: note }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        alert(`Connection request sent to ${person.first_name}!`);
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (e) { alert('Failed to send invite'); }
+  };
+
+  const autoCallLeads = async (leadsToCall) => {
+    if (!leadsToCall.length) {
+      alert('No leads with score 70+ to call');
+      return;
+    }
+
+    const leadsWithInfo = leadsToCall.filter(l => l.first_name && l.company_name);
+
+    if (!confirm(`This will trigger AI phone calls to ${leadsWithInfo.length} leads. The AI will:\n\n1. Introduce your company\n2. Explain why we're reaching out\n3. Try to schedule a meeting with the sales manager\n\nProceed?`)) return;
+
+    setAutoCalling(true);
+    const results = [];
+
+    for (const lead of leadsWithInfo) {
+      try {
+        const resp = await fetch('/api/v1/leads/auto-call', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead, persona_id: selectedPersona }),
+        });
+        const data = await resp.json();
+
+        if (!data.success && data.suggestion === 'send_linkedin_message') {
+          if (lead.provider_id) {
+            try {
+              const msgResp = await fetch('/api/v1/leads/outreach-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lead, icp: icp || {}, persona_id: selectedPersona, channel: 'linkedin' }),
+              });
+              const msgData = await msgResp.json();
+
+              if (msgData.message) {
+                const sendResp = await fetch('/api/v1/linkedin/invite', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ provider_id: lead.provider_id, message: msgData.message.slice(0, 300) }),
+                });
+                const sendData = await sendResp.json();
+
+                results.push({
+                  name: `${lead.first_name} ${lead.last_name}`,
+                  company: lead.company_name,
+                  status: sendData.success ? 'linkedin_sent' : 'failed',
+                  error: sendData.error || '',
+                });
+
+                try {
+                  await fetch('/api/v1/leads/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...lead, persona_id: selectedPersona, status: 'contacted' }),
+                  });
+                } catch (e) {}
+
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+              }
+            } catch (e) {}
+          }
+
+          results.push({
+            name: `${lead.first_name} ${lead.last_name}`,
+            company: lead.company_name,
+            status: 'no_phone',
+            error: 'No phone number — LinkedIn invite sent instead',
+          });
+        } else {
+          results.push({
+            name: `${lead.first_name} ${lead.last_name}`,
+            company: lead.company_name,
+            status: data.success ? 'called' : 'failed',
+            error: data.error || '',
+            call_id: data.call_id || '',
+          });
+
+          try {
+            await fetch('/api/v1/leads/save', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...lead, persona_id: selectedPersona, status: 'contacted' }),
+            });
+          } catch (e) {}
+        }
+      } catch (e) {
+        results.push({
+          name: `${lead.first_name} ${lead.last_name}`,
+          status: 'error',
+          error: e.message,
+        });
+      }
+
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    setCallResults(results);
+    setAutoCalling(false);
+    loadSaved();
+
+    const succeeded = results.filter(r => r.status === 'called').length;
+    const linkedin = results.filter(r => r.status === 'linkedin_sent' || r.status === 'no_phone').length;
+    alert(`Done! ${succeeded} calls initiated, ${linkedin} LinkedIn invites sent, out of ${results.length} leads.`);
+  };
+
+  const autoCallLinkedinLeads = async (people) => {
+    const saved = [];
+    for (const person of people) {
+      try {
+        await fetch('/api/v1/leads/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...person,
+            ai_score: 0,
+            ai_reason: 'LinkedIn search result',
+            ai_approach: '',
+            persona_id: selectedPersona,
+            status: 'new',
+          }),
+        });
+        saved.push(person);
+      } catch (e) {}
+    }
+
+    if (saved.length > 0) {
+      autoCallLeads(saved);
+    }
   };
 
   return (
@@ -206,6 +374,70 @@ export default function LeadFinderPage() {
             </div>
           </div>
 
+          {/* LinkedIn Direct Search */}
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>🔍 LinkedIn Search (via Unipile)</h2>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem' }}>Search real LinkedIn profiles. Results include verified profile URLs.</p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <input type="text" value={linkedinKeywords} onChange={(e) => setLinkedinKeywords(e.target.value)}
+                placeholder='e.g. "Founder startup Germany" or "CTO Berlin e-commerce"'
+                onKeyDown={(e) => { if (e.key === 'Enter') searchLinkedIn(); }}
+                style={{ flex: 1, padding: '8px 14px', border: '1px solid #e5e7eb', borderRadius: '9999px', fontSize: '0.875rem', outline: 'none' }} />
+              <button onClick={searchLinkedIn} disabled={linkedinSearching || !linkedinKeywords}
+                style={{ padding: '8px 20px', background: '#0077b5', color: '#fff', border: 'none', borderRadius: '9999px', fontSize: '0.875rem', cursor: 'pointer', opacity: (linkedinSearching || !linkedinKeywords) ? 0.5 : 1 }}>
+                {linkedinSearching ? 'Searching...' : '🔍 Search LinkedIn'}</button>
+            </div>
+
+            {linkedinResults.length > 0 && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{linkedinResults.length} people found</div>
+                  <button
+                    onClick={() => autoCallLinkedinLeads(linkedinResults)}
+                    disabled={autoCalling}
+                    style={{
+                      padding: '6px 14px', fontSize: '0.75rem',
+                      background: '#8b5cf6', color: '#fff',
+                      border: 'none', borderRadius: '9999px', cursor: 'pointer',
+                      opacity: autoCalling ? 0.5 : 1,
+                    }}
+                  >
+                    {autoCalling ? '📞 Calling...' : '📞 Auto-Call All'}
+                  </button>
+                </div>
+                {linkedinResults.map((person, i) => (
+                  <div key={i} style={{ padding: '0.75rem 1rem', border: '1px solid #e5e7eb', borderRadius: '0.75rem', marginBottom: '0.5rem', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                      {person.profile_picture && (
+                        <img src={person.profile_picture} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                      )}
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{person.first_name} {person.last_name}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#374151' }}>{person.headline}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          {person.company_name && `${person.company_name} · `}{person.location}
+                          {person.network_distance && ` · ${person.network_distance}`}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                      {person.linkedin_url && (
+                        <a href={person.linkedin_url} target="_blank" rel="noopener noreferrer"
+                          style={{ padding: '4px 10px', fontSize: '0.7rem', background: '#0077b5', color: '#fff', borderRadius: '9999px', textDecoration: 'none' }}>Profile</a>
+                      )}
+                      <button onClick={() => sendInvite(person)}
+                        style={{ padding: '4px 10px', fontSize: '0.7rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '9999px', cursor: 'pointer' }}>Connect</button>
+                      <button onClick={() => { setSelectedLead(person); generateOutreach(person, 'linkedin_connection'); }}
+                        style={{ padding: '4px 10px', fontSize: '0.7rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '9999px', cursor: 'pointer' }}>Draft</button>
+                      <button onClick={() => saveLead({...person, ai_score: 0, ai_reason: '', ai_approach: ''})}
+                        style={{ padding: '4px 10px', fontSize: '0.7rem', background: '#000', color: '#fff', border: 'none', borderRadius: '9999px', cursor: 'pointer' }}>Save</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Step 1: Select Persona + Generate ICP */}
           <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
             <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>1. Select Your Business Persona</h2>
@@ -285,7 +517,20 @@ export default function LeadFinderPage() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>3. Results ({totalResults} found)</h2>
-                <div style={{ display: 'flex', gap: '4px' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    onClick={() => autoCallLeads(leads.filter(l => (l.ai_score || 0) >= 70))}
+                    disabled={autoCalling}
+                    style={{
+                      padding: '8px 16px', fontSize: '0.8rem',
+                      background: '#8b5cf6', color: '#fff',
+                      border: 'none', borderRadius: '9999px', cursor: 'pointer',
+                      opacity: autoCalling ? 0.5 : 1,
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                    }}
+                  >
+                    {autoCalling ? '📞 Calling...' : `📞 Auto-Call Top Leads (${leads.filter(l => (l.ai_score || 0) >= 70).length})`}
+                  </button>
                   {page > 1 && <button onClick={() => searchLeads(page - 1)} style={{ padding: '4px 12px', fontSize: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '9999px', cursor: 'pointer' }}>← Prev</button>}
                   <span style={{ fontSize: '0.8rem', color: '#6b7280', padding: '4px 8px' }}>Page {page}</span>
                   <button onClick={() => searchLeads(page + 1)} style={{ padding: '4px 12px', fontSize: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '9999px', cursor: 'pointer' }}>Next →</button>
@@ -331,6 +576,26 @@ export default function LeadFinderPage() {
                   </div>
                 </div>
               ))}
+
+              {callResults.length > 0 && (
+                <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.75rem', background: '#f9fafb' }}>
+                  <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>📞 Call Results</h3>
+                  {callResults.map((r, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '0.8rem', borderBottom: '1px solid #f3f4f6' }}>
+                      <span>{r.name} ({r.company})</span>
+                      <span style={{
+                        color: r.status === 'called' ? '#10b981' : r.status === 'linkedin_sent' ? '#0077b5' : '#ef4444',
+                        fontWeight: 600,
+                      }}>
+                        {r.status === 'called' ? '✓ Call initiated' :
+                         r.status === 'linkedin_sent' ? '✓ LinkedIn invite sent' :
+                         r.status === 'no_phone' ? '→ LinkedIn invite sent (no phone)' :
+                         `✗ ${r.error || 'Failed'}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -440,6 +705,26 @@ export default function LeadFinderPage() {
                       {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                     </select>
                     {lead.linkedin_url && <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.7rem', color: '#0077b5' }}>🔍 Find on LinkedIn</a>}
+                    {lead.phone && (
+                      <button onClick={async () => {
+                        if (!confirm(`Trigger AI phone call to ${lead.first_name} at ${lead.phone}?`)) return;
+                        const resp = await fetch('/api/v1/happyrobot/call', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            phone_number: lead.phone,
+                            customer_name: `${lead.first_name} ${lead.last_name}`,
+                            context: `Lead from ${lead.company_name}. ${lead.ai_reason || ''}`,
+                          }),
+                        });
+                        const data = await resp.json();
+                        if (data.success) {
+                          alert(`AI call initiated! Call ID: ${data.call_id}`);
+                        } else {
+                          alert(`Call failed: ${data.error}`);
+                        }
+                      }} style={{ padding: '4px 10px', fontSize: '0.7rem', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '9999px', cursor: 'pointer' }}>📞 AI Call</button>
+                    )}
                     <button onClick={() => deleteLead(lead.id)} style={{ fontSize: '0.7rem', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
                   </div>
                 </div>
