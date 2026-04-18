@@ -108,6 +108,9 @@ app.include_router(unipile_router, prefix="/api/v1", tags=["LinkedIn & Calls"])
 from app.api.meetings import router as meetings_router
 app.include_router(meetings_router, prefix="/api/v1", tags=["Meetings"])
 
+from app.api.happyrobot_webhook import router as hr_webhook_router
+app.include_router(hr_webhook_router, prefix="/api/v1", tags=["HappyRobot Webhook"])
+
 
 @app.get("/health")
 async def health_check():

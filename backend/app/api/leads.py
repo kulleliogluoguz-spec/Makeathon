@@ -184,13 +184,15 @@ async def gen_outreach(body: dict, db: AsyncSession = Depends(get_db)):
 
 @router.post("/leads/auto-call")
 async def auto_call_lead(body: dict, db: AsyncSession = Depends(get_db)):
-    """Trigger HappyRobot outbound call for a lead."""
-    from app.services.happyrobot_service import trigger_outbound_call
+    """Trigger HappyRobot outbound call with full persona context."""
+    from app.services.happyrobot_service import trigger_outbound_call_full
+    from app.models.availability import Availability
+    from datetime import datetime, timedelta
 
     lead = body.get("lead", {})
     persona_id = body.get("persona_id", "")
 
-    # Get persona info for call context
+    # Get persona info
     persona_dict = {}
     if persona_id:
         p_result = await db.execute(select(Persona).where(Persona.id == persona_id))
@@ -201,52 +203,54 @@ async def auto_call_lead(body: dict, db: AsyncSession = Depends(get_db)):
                 "description": persona.description or "",
                 "display_name": persona.display_name or "",
                 "role_title": persona.role_title or "",
+                "expertise_areas": persona.expertise_areas or [],
+                "background_story": persona.background_story or "",
             }
 
-    # Try to get phone number
+    # Get phone number
     phone = lead.get("phone", "")
-
-    # If no phone, try to get from Unipile profile
-    if not phone and lead.get("provider_id"):
-        try:
-            from app.services.unipile_service import get_linkedin_profile
-            profile = await get_linkedin_profile(lead["provider_id"])
-            phone = profile.get("phone_number", "") or profile.get("phone", "")
-        except Exception:
-            pass
-
     if not phone:
-        return {
-            "success": False,
-            "error": "No phone number available for this lead.",
-            "suggestion": "send_linkedin_message",
-        }
+        return {"success": False, "error": "No phone number available", "suggestion": "send_linkedin_message"}
 
-    # Build context for the AI caller
-    company_name = persona_dict.get("company_name", "our company")
-    company_desc = persona_dict.get("description", "")
-    sales_manager = persona_dict.get("display_name", "our sales manager")
+    # Get admin availability for meeting scheduling
+    available_slots = []
+    try:
+        avail_result = await db.execute(select(Availability).limit(1))
+        avail = avail_result.scalar_one_or_none()
+        if avail and avail.weekly_schedule:
+            import pytz
+            tz = pytz.timezone(avail.timezone or "Europe/Berlin")
+            now = datetime.now(tz)
+            day_map = {0: "mon", 1: "tue", 2: "wed", 3: "thu", 4: "fri", 5: "sat", 6: "sun"}
+            blocked = set(avail.blocked_dates or [])
 
-    context = f"""You are calling {lead.get('first_name', '')} {lead.get('last_name', '')} who is {lead.get('title', '')} at {lead.get('company_name', '')}.
+            for days_ahead in range(1, 14):
+                check_date = now + timedelta(days=days_ahead)
+                date_str = check_date.strftime("%Y-%m-%d")
+                if date_str in blocked:
+                    continue
+                day_key = day_map.get(check_date.weekday(), "")
+                day_schedule = (avail.weekly_schedule or {}).get(day_key, {})
+                if day_schedule.get("enabled"):
+                    start = day_schedule.get("start", "09:00")
+                    day_name = check_date.strftime("%A, %B %d")
+                    available_slots.append(f"{day_name} at {start}")
+                    available_slots.append(f"{day_name} at 14:00")
+                    if len(available_slots) >= 6:
+                        break
+    except Exception as e:
+        print(f"Availability check error: {e}")
 
-You are calling on behalf of {company_name}. {company_desc}
-
-Your goals in this call:
-1. Introduce yourself and {company_name}
-2. Explain that you noticed their company and believe your services could help them
-3. Briefly describe what {company_name} offers: {company_desc}
-4. Mention that {lead.get('ai_reason', 'we believe there is a great fit between our companies')}
-5. Your main goal is to schedule a meeting with {sales_manager}, the sales manager
-6. Suggest specific times: "Would tomorrow or the day after work for a quick 15-minute call with our sales manager?"
-7. If they agree, confirm the time and say the sales manager will reach out
-8. If they're not interested, thank them politely and end the call
-9. Be professional, warm, and concise. Don't be pushy.
-10. Keep the call under 2 minutes."""
-
-    result = await trigger_outbound_call(
+    result = await trigger_outbound_call_full(
         phone_number=phone,
         customer_name=f"{lead.get('first_name', '')} {lead.get('last_name', '')}",
-        context=context,
+        customer_company=lead.get("company_name", ""),
+        customer_title=lead.get("title", ""),
+        customer_email=lead.get("email", ""),
+        persona_context=persona_dict,
+        available_slots=available_slots,
+        lead_reason=lead.get("ai_reason", ""),
+        lead_approach=lead.get("ai_approach", ""),
     )
 
     return result

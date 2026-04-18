@@ -63,6 +63,22 @@ class Settings(BaseSettings):
     # FASHN.ai Virtual Try-On
     FASHN_API_KEY: str = ""
 
+    # Unipile LinkedIn
+    UNIPILE_API_KEY: str = ""
+    UNIPILE_DSN: str = ""
+    UNIPILE_ACCOUNT_ID: str = ""
+
+    # HappyRobot AI Calls
+    HAPPYROBOT_API_KEY: str = ""
+    HAPPYROBOT_USE_CASE_ID: str = ""
+    HAPPYROBOT_NUMBER_ID: str = ""
+    HAPPYROBOT_API_URL: str = "https://app.happyrobot.ai/api/v1"
+    HAPPYROBOT_WEBHOOK_URL: str = "https://workflows.platform.eu.happyrobot.ai/hooks/fhiyxhmghaqj"
+    HAPPYROBOT_WEBHOOK_SECRET: str = ""
+
+    # Apollo (legacy)
+    APOLLO_API_KEY: str = ""
+
     class Config:
         env_file = ".env"
 

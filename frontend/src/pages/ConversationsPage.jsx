@@ -259,7 +259,7 @@ export default function ConversationsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                   <div>
                     <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>
-                      {c.channel === 'instagram' ? '📷' : '💬'} {c.sender_id.slice(0, 12)}...
+                      {c.channel === 'instagram' ? '📷' : c.channel === 'phone' ? '📞' : c.channel === 'telegram' ? '✈️' : '💬'} {c.sender_id.slice(0, 12)}...
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
                       {c.message_count} messages · {new Date(c.last_message_at).toLocaleString()}

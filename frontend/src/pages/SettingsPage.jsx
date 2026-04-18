@@ -347,6 +347,18 @@ export default function SettingsPage() {
         )}
       </section>
 
+      {/* Meeting Availability */}
+      <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>Meeting Availability</h2>
+        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+          Set your available times for meetings. The AI phone agent will offer these slots to potential customers.
+        </p>
+        <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+          Your working hours schedule above is used for meeting availability. Make sure it's up to date.
+          The AI will offer meeting times within your working hours for the next 2 weeks.
+        </p>
+      </section>
+
       {/* Live Chat Widget */}
       <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('settings_livechat')}</h2>
