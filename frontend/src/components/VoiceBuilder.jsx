@@ -366,7 +366,7 @@ export default function VoiceBuilder({ personaId, persona, onFieldsExtracted }) 
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-gray-900">Voice Persona Builder</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Clerque Voice Builder</h3>
           <div className="flex items-center gap-1">
             <button onClick={() => setMuted(!muted)} className="p-1 text-gray-400 hover:text-gray-600" title={muted ? 'Unmute agent' : 'Mute agent'}>
               {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}

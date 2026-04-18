@@ -1,6 +1,6 @@
 let notificationPermission = 'default';
 let unreadCount = 0;
-let originalTitle = typeof document !== 'undefined' ? document.title : 'Persona Builder';
+let originalTitle = typeof document !== 'undefined' ? document.title : 'Clerque';
 let flashInterval = null;
 
 export function initNotifications() {
@@ -56,7 +56,7 @@ export function resetUnread() {
 
 function updateTabTitle() {
   if (unreadCount > 0) {
-    document.title = `(${unreadCount}) New Message — Persona Builder`;
+    document.title = `(${unreadCount}) New Message — Clerque`;
   } else {
     document.title = originalTitle;
   }

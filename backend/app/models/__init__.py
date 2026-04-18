@@ -12,3 +12,4 @@ from app.models.broadcast import BroadcastCampaign  # noqa
 from app.models.lead import SavedLead  # noqa
 from app.models.meeting import Meeting  # noqa
 from app.models.availability import Availability  # noqa
+from app.models.landing_page import LandingPage  # noqa

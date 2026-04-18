@@ -111,6 +111,9 @@ app.include_router(meetings_router, prefix="/api/v1", tags=["Meetings"])
 from app.api.happyrobot_webhook import router as hr_webhook_router
 app.include_router(hr_webhook_router, prefix="/api/v1", tags=["HappyRobot Webhook"])
 
+from app.api.landing_pages import router as landing_pages_router
+app.include_router(landing_pages_router, prefix="/api/v1", tags=["Landing Pages"])
+
 
 @app.get("/health")
 async def health_check():

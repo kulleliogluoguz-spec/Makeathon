@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate, NavLink } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { UserCircle, MessageSquare, Users, Settings, BarChart3 } from 'lucide-react'
+import { UserCircle, MessageSquare, Users, Settings } from 'lucide-react'
 import { t } from './lib/i18n'
 import { isLoggedIn, getUser, clearAuth, isAdmin } from './lib/auth'
 import { initNotifications, getUnreadCount, resetUnread } from './lib/notifications'
@@ -12,7 +12,6 @@ import PersonaEditorPage from './pages/PersonaEditorPage'
 import ConversationsPage from './pages/ConversationsPage'
 import CustomersPage from './pages/CustomersPage'
 import SettingsPage from './pages/SettingsPage'
-import AnalyticsPage from './pages/AnalyticsPage'
 import LeadFinderPage from './pages/LeadFinderPage'
 import MeetingsPage from './pages/MeetingsPage'
 
@@ -21,7 +20,7 @@ function TopNav({ unread, setUnread }) {
     <header className="h-14 border-b border-gray-200 bg-white px-6 flex items-center justify-between shrink-0">
       <NavLink to="/personas" className="flex items-center gap-2 text-gray-900 font-semibold text-lg">
         <UserCircle size={22} strokeWidth={1.5} />
-        Persona Builder
+        Clerque
       </NavLink>
       <nav className="flex items-center gap-1">
         <NavLink to="/personas" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
@@ -33,9 +32,6 @@ function TopNav({ unread, setUnread }) {
         </NavLink>
         <NavLink to="/customers" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
           <Users size={16} strokeWidth={1.5} /> {t('nav_customers')}
-        </NavLink>
-        <NavLink to="/analytics" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
-          <BarChart3 size={16} strokeWidth={1.5} /> {t('nav_analytics')}
         </NavLink>
         <NavLink to="/leads" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
           {t('nav_leads')}
@@ -92,7 +88,6 @@ export default function App() {
           <Route path="/personas/:id" element={<PersonaEditorPage />} />
           <Route path="/conversations" element={<ConversationsPage />} />
           <Route path="/customers" element={<CustomersPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/leads" element={<LeadFinderPage />} />
           <Route path="/meetings" element={<MeetingsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

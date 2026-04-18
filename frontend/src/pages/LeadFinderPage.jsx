@@ -29,6 +29,8 @@ export default function LeadFinderPage() {
   const [linkedinSearching, setLinkedinSearching] = useState(false);
   const [autoCalling, setAutoCalling] = useState(false);
   const [callResults, setCallResults] = useState([]);
+  const [autoLandingPage, setAutoLandingPage] = useState(null);
+  const [generatingLP, setGeneratingLP] = useState(false);
 
   useEffect(() => {
     fetch('/api/v1/personas/').then(r => r.json()).then(setPersonas).catch(() => {});
@@ -62,6 +64,7 @@ export default function LeadFinderPage() {
     if (!icp) return;
     setSearching(true);
     setPage(p);
+    setAutoLandingPage(null);
     try {
       const resp = await fetch('/api/v1/leads/search', {
         method: 'POST',
@@ -69,8 +72,17 @@ export default function LeadFinderPage() {
         body: JSON.stringify({ icp, persona_id: selectedPersona, page: p }),
       });
       const data = await resp.json();
-      setLeads(data.leads || []);
+      const foundLeads = data.leads || [];
+      setLeads(foundLeads);
       setTotalResults(data.total || 0);
+
+      // Auto-generate landing page for the #1 lead
+      if (foundLeads.length > 0 && p === 1) {
+        const topLead = foundLeads[0];
+        if (topLead.company_name) {
+          autoGenerateLandingPage(topLead);
+        }
+      }
     } catch (e) { console.error(e); }
     setSearching(false);
   };
@@ -124,7 +136,16 @@ export default function LeadFinderPage() {
         body: JSON.stringify({ keywords: linkedinKeywords, limit: 25 }),
       });
       const data = await resp.json();
-      setLinkedinResults(data.people || []);
+      const people = data.people || [];
+      setLinkedinResults(people);
+
+      // Auto-generate landing page for the #1 result
+      if (people.length > 0) {
+        const topPerson = people[0];
+        if (topPerson.company_name) {
+          autoGenerateLandingPage(topPerson);
+        }
+      }
     } catch (e) { console.error(e); }
     setLinkedinSearching(false);
   };
@@ -147,6 +168,22 @@ export default function LeadFinderPage() {
         alert(`Error: ${data.error}`);
       }
     } catch (e) { alert('Failed to send invite'); }
+  };
+
+  const autoGenerateLandingPage = async (lead) => {
+    setGeneratingLP(true);
+    try {
+      const resp = await fetch('/api/v1/landing-pages/auto-generate-for-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead, persona_id: selectedPersona }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        setAutoLandingPage(data);
+      }
+    } catch (e) { console.error(e); }
+    setGeneratingLP(false);
   };
 
   const autoCallLeads = async (leadsToCall) => {
@@ -596,6 +633,54 @@ export default function LeadFinderPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Auto-Generated Landing Page */}
+          {(generatingLP || autoLandingPage) && (
+            <div style={{ marginTop: '1.5rem', background: '#fff', border: '2px solid #8b5cf6', borderRadius: '0.75rem', overflow: 'hidden' }}>
+              <div style={{ padding: '1rem 1.25rem', background: '#f5f3ff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#5b21b6', marginBottom: '2px' }}>
+                    {generatingLP ? '🤖 Generating Landing Page...' : `🎨 Landing Page for ${autoLandingPage?.company}`}
+                  </h3>
+                  <p style={{ fontSize: '0.75rem', color: '#7c3aed' }}>
+                    {generatingLP ? 'Clerque is creating a custom landing page for the top lead...' : 'Auto-generated based on the top-scored lead'}
+                  </p>
+                </div>
+                {autoLandingPage && (
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => window.open(`/api/v1/landing-pages/${autoLandingPage.id}/preview`, '_blank')}
+                      style={{ padding: '6px 14px', fontSize: '0.75rem', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '9999px', cursor: 'pointer' }}>↗ Full Preview</button>
+                    <button onClick={() => {
+                      const blob = new Blob([autoLandingPage.html], { type: 'text/html' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${autoLandingPage.company || 'landing-page'}.html`.replace(/\s+/g, '-').toLowerCase();
+                      a.click();
+                    }}
+                      style={{ padding: '6px 14px', fontSize: '0.75rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '9999px', cursor: 'pointer' }}>⬇ Download</button>
+                    <button onClick={() => window.location.href = `/landing-pages`}
+                      style={{ padding: '6px 14px', fontSize: '0.75rem', background: '#fff', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '9999px', cursor: 'pointer' }}>✏️ Edit</button>
+                  </div>
+                )}
+              </div>
+
+              {generatingLP ? (
+                <div style={{ padding: '3rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 2s linear infinite' }}>🤖</div>
+                  <div style={{ color: '#7c3aed', fontSize: '0.9rem' }}>Clerque is designing a custom landing page...</div>
+                  <div style={{ color: '#9ca3af', fontSize: '0.8rem', marginTop: '0.5rem' }}>This takes about 15-20 seconds</div>
+                  <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+                </div>
+              ) : autoLandingPage ? (
+                <iframe
+                  srcDoc={autoLandingPage.html}
+                  style={{ width: '100%', height: '500px', border: 'none' }}
+                  title="Auto Landing Page Preview"
+                />
+              ) : null}
             </div>
           )}
 
