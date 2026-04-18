@@ -28,10 +28,22 @@ async def list_conversations(
     if assigned_to:
         states = [s for s in states if s.assigned_to == assigned_to]
 
+    # Build sender_id → customer display_name map
+    from app.models.customer import Customer
+    cust_result = await db.execute(select(Customer))
+    customers = cust_result.scalars().all()
+    name_map = {}
+    for c in customers:
+        if c.instagram_sender_id:
+            name_map[c.instagram_sender_id] = c.display_name
+        # Also match by source-specific IDs
+        name_map[c.id] = c.display_name
+
     return [
         {
             "id": s.id,
             "sender_id": s.sender_id,
+            "customer_name": name_map.get(s.sender_id, ""),
             "persona_id": s.persona_id,
             "channel": s.channel,
             "intent_score": s.intent_score,

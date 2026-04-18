@@ -212,7 +212,7 @@ export default function ConversationsPage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
-                  {r.channel === 'instagram' ? '📷' : '💬'} {r.sender_id.slice(0, 12)}...
+                  {r.channel === 'instagram' ? '📷' : '💬'} {r.customer_name || r.sender_id.slice(0, 12)}
                 </span>
                 <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                   {r.total_matches} match(es)
@@ -259,7 +259,7 @@ export default function ConversationsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                   <div>
                     <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>
-                      {c.channel === 'instagram' ? '📷' : c.channel === 'phone' ? '📞' : c.channel === 'telegram' ? '✈️' : '💬'} {c.sender_id.slice(0, 12)}...
+                      {c.channel === 'instagram' ? '📷' : c.channel === 'phone' ? '📞' : c.channel === 'telegram' ? '✈️' : '💬'} {c.customer_name || c.sender_id.slice(0, 12)}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
                       {c.message_count} messages · {new Date(c.last_message_at).toLocaleString()}

@@ -169,7 +169,7 @@ async def seed_demo_data():
                 handle=cust_data["handle"],
                 tags=cust_data["tags"],
                 is_archived=cust_data["is_archived"],
-                instagram_sender_id=sender_id if cust_data["source"] == "instagram" else "",
+                instagram_sender_id=sender_id,
                 last_contact_at=now + timedelta(minutes=cust_data["messages"][-1]["ts"]),
                 total_messages=str(len(cust_data["messages"])),
                 created_at=now + timedelta(minutes=cust_data["messages"][0]["ts"]),

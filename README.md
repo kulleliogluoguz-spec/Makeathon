@@ -1,38 +1,60 @@
-# VoiceAgent Platform
+# Clerque
 
-A fully customizable AI agent platform for customer engagement. Build voice agents for company recognition, customer support, sales, and AI-powered lead generation.
+An AI-powered customer engagement platform that automates lead generation, outreach, phone calls, and meeting scheduling — all from a single dashboard.
 
 ## Features
 
-### Backend (FastAPI + SQLAlchemy)
-- **Agent Management**: CRUD, duplication, status management
-- **Persona Builder**: 8 personality traits (friendliness, formality, empathy...), communication style, emotional responses, automatic system prompt generation
-- **Visual Workflow Engine**: 14 node types (AI Prompt, Question, Condition, Transfer, Webhook, API Call, Knowledge Lookup, Set Variable, Wait, Collect Input, Function Call, Play Audio, Start, End)
-- **Workflow Execution Engine**: Conversation flow through workflows, variable interpolation, condition evaluation, retry logic
-- **Conversation Tracking**: Message history, sentiment analysis, company profile extraction
-- **Company Profiles**: Automatic company profile extraction from conversations
-- **Knowledge Base**: Reference knowledge base for agents
-- **WebSocket**: Real-time voice conversation infrastructure
-- **Workflow Templates**: Ready-made templates (Company Recognition, Customer Support, Sales, Appointment, Survey)
-- **AI Lead Finder**: AI-powered lead generation with web search, ICP generation, lead scoring, and outreach message drafting
-- **LinkedIn Integration (Unipile)**: Search LinkedIn profiles, send connection requests, send messages via Unipile API
-- **HappyRobot AI Calls**: Outbound AI phone calls to leads and high-intent customers, auto-triggered at intent score 90+
-- **Auto-Call Offer**: When intent score hits 70+, AI offers customers a phone call across all channels
-- **Meeting Calendar**: Scheduled meetings from AI outreach, with full AI-generated reports (summary, talking points, approach, risks, transcript)
-- **Demo Data Seeder**: 5 English demo customers with conversations, CSAT ratings, and broadcast campaigns
-- **Multi-Channel**: Instagram, Telegram, Messenger, WhatsApp, Live Chat widget
+### AI Lead Generation & Outreach
+- **AI Lead Finder**: Search the web for potential customers using OpenAI, generate Ideal Customer Profiles (ICP) from persona data, AI-score leads 0-100
+- **Preset Filters**: One-click search presets (German Startups, DACH E-Commerce, Digital Agencies, Restaurants)
+- **LinkedIn Integration (Unipile)**: Search real LinkedIn profiles, send connection requests with personalized notes, send direct messages
+- **Auto-Call Top Leads**: Batch-call high-scoring leads via HappyRobot AI — if no phone, falls back to LinkedIn invite
+- **AI Outreach Messages**: Generate personalized outreach for LinkedIn, Email, WhatsApp with landing page URL included
+- **Auto Landing Page**: After every lead search, Claude AI auto-generates a custom landing page for the top lead, auto-deploys to Netlify with live URL
 
-### Frontend (React + Vite + React Flow)
-- **Dashboard**: Overview, statistics
-- **Agent Editor**: Voice settings, LLM settings, behavior rules, persona assignment
-- **Visual Workflow Builder**: Drag-and-drop node editor (React Flow), node configuration, edge management
-- **Persona Editor**: Personality trait sliders, communication rules, emotional response management, automatic system prompt
-- **Conversations**: Past conversations, analytics, message details
-- **Customers**: Unified customer database across all channels
-- **Lead Finder**: AI-powered lead generation with preset filters, editable search criteria, LinkedIn search via Unipile, auto-call top leads, LinkedIn fallback
-- **Meetings**: Calendar view with AI-generated meeting reports — conversation summary, recommended approach, talking points, risk factors, call transcript
-- **Analytics**: Performance overview, intent scoring, sales funnel
-- **Settings**: Business hours, auto-reply, live chat widget, language selection (EN/TR)
+### AI Phone Calls (HappyRobot)
+- **Outbound AI Calls**: Full call script with persona context, email offer, meeting scheduling with available time slots
+- **Auto-Call Offer**: When customer intent score hits 70+ in any channel, AI naturally offers a phone call
+- **Auto-Trigger at 90+**: Automatically calls customers with very high buying intent
+- **Webhook Integration**: Call transcripts auto-saved to conversations, meetings auto-created, follow-up emails auto-sent
+- **Call Context**: AI introduces company, pitches services, offers email, schedules meeting — all in under 3 minutes
+
+### Meeting Calendar & Reports
+- **Calendar View**: All scheduled meetings from AI outreach calls
+- **AI Meeting Reports**: Conversation summary, recommended approach, key talking points, risk factors, estimated deal value
+- **Call Transcripts**: Full AI call transcripts attached to each meeting
+- **Status Management**: scheduled, completed, cancelled, no_show
+
+### AI Self-Learning
+- **Learns from Mistakes**: After negative customer reactions (low CSAT, complaints, lost customers), AI analyzes what went wrong
+- **Lesson Database**: Stores mistakes with categories, better alternatives, and importance weights
+- **Auto-Improves**: Lessons injected into AI prompts — the AI gets better with every conversation
+- **Triggers**: Low CSAT (1-2), negative keywords, customer archived, complaint detected
+
+### Customer Engagement (Multi-Channel)
+- **Persona Builder**: 8 personality traits, communication style, emotional responses, auto-generated system prompts
+- **Omnichannel AI**: Instagram, Telegram, Messenger, WhatsApp, Live Chat — all with AI auto-responses
+- **Intent Scoring**: Real-time customer intent scoring (0-100) with stage tracking
+- **Customer CRM**: Unified customer database across all channels with tags, notes, categories
+- **Conversations Dashboard**: Live view of all customer conversations with customer names, intent scores, categories
+- **CSAT Surveys**: Automatic customer satisfaction tracking
+- **Quick Replies**: Predefined Q&A templates for common questions
+
+### Landing Page Creator
+- **AI Generation**: Claude API generates full production-ready HTML landing pages
+- **Style Options**: Modern, Minimal, Bold, Corporate, Creative, Startup
+- **Live Preview**: Desktop, tablet, mobile preview with iframe
+- **Refine with AI**: Chat-based refinement — "make the hero bigger", "change colors to blue"
+- **Netlify Deploy**: One-click deploy to Netlify with live URL
+- **Download HTML**: Export as standalone HTML file
+
+### Frontend (React + Vite)
+- **Personas**: Create and manage AI agent personas with personality sliders
+- **Conversations**: Live customer conversations with names, intent scores, channel icons (📷 Instagram, 📞 Phone, ✈️ Telegram, 💬 Messenger)
+- **Customers**: Unified CRM with filters, categories, search
+- **Lead Finder**: Search, score, call, draft outreach, auto-generate landing pages
+- **Meetings**: Calendar with full AI-generated meeting reports
+- **Settings**: Business hours, auto-reply, meeting availability, live chat widget
 
 ## Setup
 
@@ -97,6 +119,14 @@ API Docs: http://localhost:8000/docs
 | `/api/v1/meetings/` | GET, POST | List/create meetings |
 | `/api/v1/meetings/{id}` | GET, PATCH, DELETE | Meeting details/update/delete |
 | `/api/v1/availability/` | GET, PUT | Get/set admin availability |
+| `/api/v1/happyrobot/webhook` | POST | Receive call completion webhook |
+| `/api/v1/landing-pages/generate` | POST | Generate landing page with AI |
+| `/api/v1/landing-pages/` | GET | List saved landing pages |
+| `/api/v1/landing-pages/{id}` | GET, PATCH, DELETE | Landing page CRUD |
+| `/api/v1/landing-pages/{id}/preview` | GET | Serve landing page HTML |
+| `/api/v1/landing-pages/{id}/refine` | POST | Refine landing page with AI |
+| `/api/v1/landing-pages/{id}/deploy` | POST | Deploy to Netlify |
+| `/api/v1/landing-pages/auto-generate-for-lead` | POST | Auto-generate for top lead |
 
 ## Workflow Node Types
 
@@ -120,6 +150,7 @@ API Docs: http://localhost:8000/docs
 
 ```
 OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
 ELEVENLABS_API_KEY=your_elevenlabs_key
 INSTAGRAM_ACCESS_TOKEN=your_instagram_token
 TELEGRAM_BOT_TOKEN=your_telegram_token
@@ -129,15 +160,19 @@ UNIPILE_ACCOUNT_ID=your_linkedin_account_id
 HAPPYROBOT_API_KEY=your_happyrobot_key
 HAPPYROBOT_USE_CASE_ID=your_use_case_id
 HAPPYROBOT_NUMBER_ID=your_number_id
+HAPPYROBOT_WEBHOOK_URL=your_happyrobot_webhook_url
+NETLIFY_ACCESS_TOKEN=your_netlify_token
 ```
 
 ## Tech Stack
 
 - **Backend**: Python 3.11+, FastAPI, SQLAlchemy (async), SQLite/PostgreSQL
 - **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons
-- **Voice**: ElevenLabs API, OpenAI Whisper (STT), WebSocket
-- **LLM**: OpenAI GPT-4.1 (chat, ICP generation, lead scoring, outreach)
+- **LLM**: OpenAI GPT-4.1 (chat, ICP generation, lead scoring, outreach, self-learning)
+- **Landing Pages**: Anthropic Claude (claude-sonnet-4) for HTML generation
+- **Lead Search**: OpenAI Responses API with web_search_preview
+- **LinkedIn**: Unipile API (search, invite, message)
+- **AI Calling**: HappyRobot outbound AI phone calls with webhook
+- **Deployment**: Netlify API for landing page auto-deploy
 - **Channels**: Instagram, Telegram, Messenger, WhatsApp, Live Chat
-- **Lead Generation**: OpenAI Web Search (Responses API), Unipile LinkedIn API
-- **AI Calling**: HappyRobot outbound AI phone calls
-- **Integrations**: Apollo.io (optional), Fashn virtual try-on
+- **Voice**: ElevenLabs API, OpenAI Whisper (STT), WebSocket

@@ -19,7 +19,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 sessions = {}
 
 QUESTIONS = [
-    {"id": "q1", "field_group": "identity", "text": "What is the name and role of the persona? For example: 'Ayşe, Customer Success Manager'."},
+    {"id": "q1", "field_group": "identity", "text": "What is the name and role of the persona? For example: 'Emily, Customer Success Manager'."},
     {"id": "q2", "field_group": "identity", "text": "What company does this persona work for?"},
     {"id": "q3", "field_group": "identity", "text": "Give a brief description of this persona — who are they and what do they do?"},
     {"id": "q4", "field_group": "identity", "text": "What is their background story? What experience do they have?"},
