@@ -79,9 +79,26 @@ async def handle_webhook(request: Request):
                         await session.commit()
                     thank_msg = "Thank you for your feedback! 🙏" if csat_rating >= 4 else "Thank you for your feedback. We'll work to improve! 🙏"
                     await send_messenger_reply(sender_id, thank_msg)
+                    if csat_rating <= 2:
+                        try:
+                            from app.services.ai_learning import trigger_learning_on_negative_signal
+                            import asyncio
+                            asyncio.create_task(trigger_learning_on_negative_signal(sender_id, "low_csat", "messenger"))
+                        except Exception:
+                            pass
                     return {"status": "ok"}
                 except Exception as e:
                     print(f"CSAT save error: {e}")
+
+            # Check for negative signals and trigger learning
+            negative_keywords = ["not interested", "no thanks", "too expensive", "stop", "unsubscribe", "terrible", "worst", "never again", "waste of time", "horrible service"]
+            if any(kw in text.lower() for kw in negative_keywords):
+                try:
+                    from app.services.ai_learning import trigger_learning_on_negative_signal
+                    import asyncio
+                    asyncio.create_task(trigger_learning_on_negative_signal(sender_id, "negative_reaction", "messenger"))
+                except Exception:
+                    pass
 
             # Check business hours
             try:
@@ -306,7 +323,14 @@ The customer's intent score is high (70+). They are very interested in buying. Y
         except Exception:
             pass
 
-    full_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text
+    # Self-learning: inject lessons from past conversations
+    try:
+        from app.services.ai_learning import get_lessons_for_prompt
+        lessons_text = await get_lessons_for_prompt()
+    except Exception:
+        lessons_text = ""
+
+    full_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text + lessons_text
 
     # Call LLM
     try:

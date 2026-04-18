@@ -298,6 +298,16 @@ async def websocket_chat(websocket: WebSocket, session_id: str = "", persona_id:
                 if not user_text:
                     continue
 
+                # Check for negative signals and trigger learning
+                negative_keywords = ["not interested", "no thanks", "too expensive", "stop", "unsubscribe", "terrible", "worst", "never again", "waste of time", "horrible service"]
+                if any(kw in user_text.lower() for kw in negative_keywords):
+                    try:
+                        from app.services.ai_learning import trigger_learning_on_negative_signal
+                        import asyncio
+                        asyncio.create_task(trigger_learning_on_negative_signal(session_id, "negative_reaction", "livechat"))
+                    except Exception:
+                        pass
+
                 # Save user message
                 chat_sessions[session_id]["messages"].append({
                     "role": "user",
@@ -444,7 +454,14 @@ The customer's intent score is high (70+). They are very interested in buying. Y
         except Exception:
             pass
 
-    full_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text
+    # Self-learning: inject lessons from past conversations
+    try:
+        from app.services.ai_learning import get_lessons_for_prompt
+        lessons_text = await get_lessons_for_prompt()
+    except Exception:
+        lessons_text = ""
+
+    full_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text + lessons_text
 
     # Call LLM
     try:

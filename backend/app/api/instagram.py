@@ -76,9 +76,29 @@ async def webhook(request: Request):
                         await session.commit()
                     thank_msg = "Değerlendirmeniz için teşekkür ederiz! 🙏" if csat_rating >= 4 else "Geri bildiriminiz için teşekkür ederiz. Daha iyi olmak için çalışacağız! 🙏"
                     await send_reply(sender, thank_msg)
+                    # Trigger self-learning on low CSAT
+                    if csat_rating <= 2:
+                        try:
+                            from app.services.ai_learning import trigger_learning_on_negative_signal
+                            import asyncio
+                            asyncio.create_task(trigger_learning_on_negative_signal(sender, "low_csat", "instagram"))
+                        except Exception:
+                            pass
                     continue
                 except Exception as e:
                     print(f"CSAT save error: {e}")
+
+            # Check for negative signals and trigger learning
+            negative_keywords = ["not interested", "no thanks", "too expensive", "stop", "unsubscribe", "terrible", "worst", "never again", "waste of time", "horrible service"]
+            last_msg_lower = text.lower()
+            if any(kw in last_msg_lower for kw in negative_keywords):
+                try:
+                    from app.services.ai_learning import trigger_learning_on_negative_signal
+                    import asyncio
+                    asyncio.create_task(trigger_learning_on_negative_signal(sender, "negative_reaction", "instagram"))
+                except Exception:
+                    pass
+
             # Auto-assign conversation
             try:
                 from app.services.assignment import auto_assign_conversation
@@ -530,7 +550,14 @@ The customer's intent score is high (70+). They are very interested in buying. Y
         except Exception:
             pass
 
-    full_system_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text
+    # Self-learning: inject lessons from past conversations
+    try:
+        from app.services.ai_learning import get_lessons_for_prompt
+        lessons_text = await get_lessons_for_prompt()
+    except Exception:
+        lessons_text = ""
+
+    full_system_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text + lessons_text
     # Detect language of last user message and add override system message
     last_user_text = ""
     for m in reversed(history):

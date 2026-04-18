@@ -68,7 +68,24 @@ async def telegram_webhook(request: Request):
                 await session.commit()
             thank = "Thank you for your feedback! 🙏" if csat_rating >= 4 else "Thank you for your feedback. We'll improve! 🙏"
             await send_telegram_message(chat_id, thank)
+            if csat_rating <= 2:
+                try:
+                    from app.services.ai_learning import trigger_learning_on_negative_signal
+                    import asyncio
+                    asyncio.create_task(trigger_learning_on_negative_signal(str(chat_id), "low_csat", "telegram"))
+                except Exception:
+                    pass
             return {"status": "ok"}
+        except Exception:
+            pass
+
+    # Check for negative signals and trigger learning
+    negative_keywords = ["not interested", "no thanks", "too expensive", "stop", "unsubscribe", "terrible", "worst", "never again", "waste of time", "horrible service"]
+    if any(kw in text.lower() for kw in negative_keywords):
+        try:
+            from app.services.ai_learning import trigger_learning_on_negative_signal
+            import asyncio
+            asyncio.create_task(trigger_learning_on_negative_signal(str(chat_id), "negative_reaction", "telegram"))
         except Exception:
             pass
 
@@ -186,7 +203,14 @@ The customer's intent score is high (70+). They are very interested in buying. Y
         except Exception:
             pass
 
-    full_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text
+    # Self-learning: inject lessons from past conversations
+    try:
+        from app.services.ai_learning import get_lessons_for_prompt
+        lessons_text = await get_lessons_for_prompt()
+    except Exception:
+        lessons_text = ""
+
+    full_prompt = system_prompt + products_text + scoring_context + call_offer_text + quick_replies_text + lessons_text
 
     try:
         last_user_text = user_message
