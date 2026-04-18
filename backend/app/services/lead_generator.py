@@ -267,7 +267,7 @@ Return JSON array only:
         return leads
 
 
-async def generate_outreach_message(lead: dict, persona: dict, icp: dict, channel: str = "email") -> str:
+async def generate_outreach_message(lead: dict, persona: dict, icp: dict, channel: str = "email", landing_page_url: str = "") -> str:
     """Generate a personalized outreach message for a specific lead."""
     if channel == "linkedin_connection":
         channel_rules = "This is a LinkedIn CONNECTION REQUEST note. Max 300 characters. Be very short and personal. No selling. Just express genuine interest in connecting."
@@ -290,6 +290,11 @@ Value Proposition: {icp.get('outreach_angle', '')}
 Why this person: {lead.get('ai_reason', '')}
 Approach: {lead.get('ai_approach', '')}
 
+{"" if not landing_page_url else f'''
+IMPORTANT: We have created a custom landing page specifically for their company. Include this URL in your message and reference it naturally.
+Landing Page URL: {landing_page_url}
+Mention something like: "We actually built a custom landing page for {lead.get("company_name", "your company")} — take a look: {landing_page_url}. If you like what you see, I would love to set up a quick meeting to discuss how we can help."
+'''}
 Rules:
 - Be specific to their company/role
 - No generic "I hope this finds you well"

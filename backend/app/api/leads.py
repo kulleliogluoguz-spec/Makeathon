@@ -166,6 +166,7 @@ async def gen_outreach(body: dict, db: AsyncSession = Depends(get_db)):
     icp = body.get("icp", {})
     channel = body.get("channel", "email")
     persona_id = body.get("persona_id", "")
+    landing_page_url = body.get("landing_page_url", "")
 
     persona_dict = {}
     if persona_id:
@@ -178,7 +179,7 @@ async def gen_outreach(body: dict, db: AsyncSession = Depends(get_db)):
                 "display_name": persona.display_name or "",
             }
 
-    message = await generate_outreach_message(lead, persona_dict, icp, channel)
+    message = await generate_outreach_message(lead, persona_dict, icp, channel, landing_page_url)
     return {"message": message}
 
 

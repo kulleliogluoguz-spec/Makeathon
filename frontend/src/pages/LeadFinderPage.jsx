@@ -107,13 +107,16 @@ export default function LeadFinderPage() {
     loadSaved();
   };
 
-  const generateOutreach = async (lead, channel = 'email') => {
+  const generateOutreach = async (lead, channel = 'email', landingPageUrl = '') => {
     setGeneratingMsg(true);
     try {
       const resp = await fetch('/api/v1/leads/outreach-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead, icp, persona_id: selectedPersona, channel }),
+        body: JSON.stringify({
+          lead, icp: icp || {}, persona_id: selectedPersona, channel,
+          landing_page_url: landingPageUrl || (autoLandingPage?.deploy_url || ''),
+        }),
       });
       const data = await resp.json();
       setOutreachMsg(data.message || '');
@@ -647,6 +650,14 @@ export default function LeadFinderPage() {
                   <p style={{ fontSize: '0.75rem', color: '#7c3aed' }}>
                     {generatingLP ? 'Clerque is creating a custom landing page for the top lead...' : 'Auto-generated based on the top-scored lead'}
                   </p>
+                  {autoLandingPage?.deploy_url && (
+                    <div style={{ fontSize: '0.8rem', color: '#059669', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      ✅ Live at: <a href={autoLandingPage.deploy_url} target="_blank" rel="noopener noreferrer"
+                        style={{ color: '#059669', fontWeight: 600 }}>{autoLandingPage.deploy_url}</a>
+                      <button onClick={() => { navigator.clipboard.writeText(autoLandingPage.deploy_url); alert('URL copied!'); }}
+                        style={{ padding: '2px 8px', fontSize: '0.65rem', background: '#d1fae5', color: '#065f46', border: 'none', borderRadius: '9999px', cursor: 'pointer' }}>Copy</button>
+                    </div>
+                  )}
                 </div>
                 {autoLandingPage && (
                   <div style={{ display: 'flex', gap: '0.5rem' }}>

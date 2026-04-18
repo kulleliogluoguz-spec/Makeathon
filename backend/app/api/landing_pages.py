@@ -170,6 +170,27 @@ async def update_page(page_id: str, body: dict, db: AsyncSession = Depends(get_d
     return {"status": "updated"}
 
 
+@router.post("/landing-pages/{page_id}/deploy")
+async def deploy_page(page_id: str, db: AsyncSession = Depends(get_db)):
+    """Deploy a landing page to Netlify and return the live URL."""
+    from app.services.netlify_deploy import deploy_landing_page
+
+    result = await db.execute(select(LandingPage).where(LandingPage.id == page_id))
+    page = result.scalar_one_or_none()
+    if not page:
+        raise HTTPException(status_code=404)
+
+    site_name = page.customer_company.lower().replace(" ", "-") if page.customer_company else "landing-page"
+    deploy_result = await deploy_landing_page(page.html_content, site_name)
+
+    if deploy_result["success"]:
+        page.status = "published"
+        page.updated_at = datetime.utcnow()
+        await db.commit()
+
+    return deploy_result
+
+
 @router.post("/landing-pages/auto-generate-for-lead")
 async def auto_generate_for_lead(body: dict, db: AsyncSession = Depends(get_db)):
     """Auto-generate a landing page based on lead company info."""
@@ -241,10 +262,24 @@ async def auto_generate_for_lead(body: dict, db: AsyncSession = Depends(get_db))
     await db.commit()
     await db.refresh(page)
 
+    # Auto-deploy to Netlify
+    deploy_url = ""
+    try:
+        from app.services.netlify_deploy import deploy_landing_page
+        site_name = (company_name or "landing").lower().replace(" ", "-").replace(".", "-")
+        deploy_result = await deploy_landing_page(result["html"], site_name)
+        if deploy_result["success"]:
+            deploy_url = deploy_result["url"]
+            page.status = "published"
+            await db.commit()
+    except Exception as e:
+        print(f"Auto-deploy error: {e}")
+
     return {
         "success": True,
         "id": page.id,
         "html": result["html"],
         "name": page.name,
         "company": company_name,
+        "deploy_url": deploy_url,
     }
