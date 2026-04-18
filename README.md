@@ -15,6 +15,11 @@ A fully customizable AI agent platform for customer engagement. Build voice agen
 - **WebSocket**: Real-time voice conversation infrastructure
 - **Workflow Templates**: Ready-made templates (Company Recognition, Customer Support, Sales, Appointment, Survey)
 - **AI Lead Finder**: AI-powered lead generation with web search, ICP generation, lead scoring, and outreach message drafting
+- **LinkedIn Integration (Unipile)**: Search LinkedIn profiles, send connection requests, send messages via Unipile API
+- **HappyRobot AI Calls**: Outbound AI phone calls to leads and high-intent customers, auto-triggered at intent score 90+
+- **Auto-Call Offer**: When intent score hits 70+, AI offers customers a phone call across all channels
+- **Meeting Calendar**: Scheduled meetings from AI outreach, with full AI-generated reports (summary, talking points, approach, risks, transcript)
+- **Demo Data Seeder**: 5 English demo customers with conversations, CSAT ratings, and broadcast campaigns
 - **Multi-Channel**: Instagram, Telegram, Messenger, WhatsApp, Live Chat widget
 
 ### Frontend (React + Vite + React Flow)
@@ -24,9 +29,9 @@ A fully customizable AI agent platform for customer engagement. Build voice agen
 - **Persona Editor**: Personality trait sliders, communication rules, emotional response management, automatic system prompt
 - **Conversations**: Past conversations, analytics, message details
 - **Customers**: Unified customer database across all channels
-- **Lead Finder**: AI-powered lead generation with preset filters, editable search criteria, LinkedIn outreach
+- **Lead Finder**: AI-powered lead generation with preset filters, editable search criteria, LinkedIn search via Unipile, auto-call top leads, LinkedIn fallback
+- **Meetings**: Calendar view with AI-generated meeting reports — conversation summary, recommended approach, talking points, risk factors, call transcript
 - **Analytics**: Performance overview, intent scoring, sales funnel
-- **Broadcast**: Bulk messaging campaigns
 - **Settings**: Business hours, auto-reply, live chat widget, language selection (EN/TR)
 
 ## Setup
@@ -82,6 +87,16 @@ API Docs: http://localhost:8000/docs
 | `/api/v1/leads/saved` | GET | List saved leads |
 | `/api/v1/leads/saved/{id}` | PATCH, DELETE | Update/delete saved lead |
 | `/api/v1/leads/outreach-message` | POST | Generate outreach message |
+| `/api/v1/leads/auto-call` | POST | Trigger AI outbound call for a lead |
+| `/api/v1/linkedin/search` | POST | Search LinkedIn profiles via Unipile |
+| `/api/v1/linkedin/profile/{id}` | GET | Get LinkedIn profile details |
+| `/api/v1/linkedin/invite` | POST | Send LinkedIn connection request |
+| `/api/v1/linkedin/message` | POST | Send LinkedIn message |
+| `/api/v1/happyrobot/call` | POST | Trigger HappyRobot outbound AI call |
+| `/api/v1/happyrobot/call/{id}` | GET | Get call status and transcript |
+| `/api/v1/meetings/` | GET, POST | List/create meetings |
+| `/api/v1/meetings/{id}` | GET, PATCH, DELETE | Meeting details/update/delete |
+| `/api/v1/availability/` | GET, PUT | Get/set admin availability |
 
 ## Workflow Node Types
 
@@ -101,20 +116,28 @@ API Docs: http://localhost:8000/docs
 | `api_call` | Call external API |
 | `function_call` | Call function |
 
-## Next Steps
+## Environment Variables
 
-1. **Voice Integration**: ElevenLabs/OpenAI TTS-STT integration
-2. **LLM Integration**: Connect OpenAI/Anthropic/Ollama providers
-3. **Phone Integration**: Twilio/Vonage phone connection
-4. **Vector Search**: Embedding-based search for knowledge base
-5. **Analytics Dashboard**: Detailed conversation analytics
-6. **Multi-tenant**: Multi-user support
-7. **A/B Testing**: Workflow variant testing
+```
+OPENAI_API_KEY=your_openai_key
+ELEVENLABS_API_KEY=your_elevenlabs_key
+INSTAGRAM_ACCESS_TOKEN=your_instagram_token
+TELEGRAM_BOT_TOKEN=your_telegram_token
+UNIPILE_API_KEY=your_unipile_access_token
+UNIPILE_DSN=api1.unipile.com:13337
+UNIPILE_ACCOUNT_ID=your_linkedin_account_id
+HAPPYROBOT_API_KEY=your_happyrobot_key
+HAPPYROBOT_USE_CASE_ID=your_use_case_id
+HAPPYROBOT_NUMBER_ID=your_number_id
+```
 
 ## Tech Stack
 
 - **Backend**: Python 3.11+, FastAPI, SQLAlchemy (async), SQLite/PostgreSQL
-- **Frontend**: React 18, Vite, Tailwind CSS, React Flow, Lucide Icons
+- **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons
 - **Voice**: ElevenLabs API, OpenAI Whisper (STT), WebSocket
-- **LLM**: OpenAI, Anthropic, Ollama (local)
+- **LLM**: OpenAI GPT-4.1 (chat, ICP generation, lead scoring, outreach)
 - **Channels**: Instagram, Telegram, Messenger, WhatsApp, Live Chat
+- **Lead Generation**: OpenAI Web Search (Responses API), Unipile LinkedIn API
+- **AI Calling**: HappyRobot outbound AI phone calls
+- **Integrations**: Apollo.io (optional), Fashn virtual try-on
