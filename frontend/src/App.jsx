@@ -13,8 +13,8 @@ import ConversationsPage from './pages/ConversationsPage'
 import CustomersPage from './pages/CustomersPage'
 import SettingsPage from './pages/SettingsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
-import BroadcastPage from './pages/BroadcastPage'
 import LeadFinderPage from './pages/LeadFinderPage'
+import MeetingsPage from './pages/MeetingsPage'
 
 function TopNav({ unread, setUnread }) {
   return (
@@ -37,11 +37,11 @@ function TopNav({ unread, setUnread }) {
         <NavLink to="/analytics" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
           <BarChart3 size={16} strokeWidth={1.5} /> {t('nav_analytics')}
         </NavLink>
-        <NavLink to="/broadcast" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
-          {t('nav_broadcast')}
-        </NavLink>
         <NavLink to="/leads" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
           {t('nav_leads')}
+        </NavLink>
+        <NavLink to="/meetings" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
+          {t('nav_meetings')}
         </NavLink>
         <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
           <Settings size={16} strokeWidth={1.5} /> {t('nav_settings')}
@@ -93,8 +93,8 @@ export default function App() {
           <Route path="/conversations" element={<ConversationsPage />} />
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/broadcast" element={<BroadcastPage />} />
           <Route path="/leads" element={<LeadFinderPage />} />
+          <Route path="/meetings" element={<MeetingsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
