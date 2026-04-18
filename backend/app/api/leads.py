@@ -15,6 +15,7 @@ from app.services.lead_generator import (
     ai_score_leads,
     generate_outreach_message,
 )
+from app.services.happyrobot_client import trigger_lead_outreach
 
 router = APIRouter()
 
@@ -116,7 +117,15 @@ async def save_lead(body: dict, db: AsyncSession = Depends(get_db)):
     db.add(lead)
     await db.commit()
     await db.refresh(lead)
-    return _serialize_lead(lead)
+
+    # Fire HappyRobot "Lead Outreach Pipeline" workflow.
+    # Failures are swallowed inside trigger_lead_outreach so they never
+    # break the save flow.
+    happyrobot_result = await trigger_lead_outreach(lead)
+
+    serialized = _serialize_lead(lead)
+    serialized["happyrobot"] = happyrobot_result
+    return serialized
 
 
 @router.get("/leads/saved")
