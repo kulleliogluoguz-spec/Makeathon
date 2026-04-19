@@ -119,6 +119,20 @@ If the AI did everything well and no mistakes were made, return:
                     session.add(new_lesson)
                     print(f"Self-learning: New lesson learned: {new_lesson.lesson[:50]}")
 
+                    # Also save to Cognee knowledge graph
+                    try:
+                        from app.services.cognee_memory import remember_lesson
+                        cognee_text = (
+                            f"LESSON [{lesson_data.get('category', '')}]: "
+                            f"Never say: '{lesson_data.get('ai_said', '')}'. "
+                            f"Customer reacted: '{lesson_data.get('customer_reaction', '')}'. "
+                            f"Instead say: '{lesson_data.get('better_alternative', '')}'. "
+                            f"Rule: {lesson_data.get('lesson', '')}"
+                        )
+                        asyncio.create_task(remember_lesson(cognee_text))
+                    except Exception:
+                        pass
+
             await session.commit()
 
     except Exception as e:
@@ -155,6 +169,15 @@ async def get_lessons_for_prompt(max_lessons: int = 10) -> str:
             for lesson in lessons:
                 lesson.times_applied += 1
             await session.commit()
+
+            # Also get lessons from Cognee knowledge graph
+            try:
+                from app.services.cognee_memory import recall_lessons
+                cognee_lessons = await recall_lessons("What should the AI avoid doing in sales conversations? What mistakes were made?")
+                if cognee_lessons:
+                    lessons_text += cognee_lessons
+            except Exception as e:
+                print(f"Cognee recall in prompt error: {e}")
 
             return lessons_text
 

@@ -329,6 +329,15 @@ async def websocket_chat(websocket: WebSocket, session_id: str = "", persona_id:
                     "content": reply_text,
                 })
 
+                # Store interaction in Cognee memory
+                try:
+                    from app.services.cognee_memory import remember_customer
+                    import asyncio
+                    customer_info = f"Customer {session_id} said: '{user_text[:100]}'. AI responded about products/services. Channel: livechat."
+                    asyncio.create_task(remember_customer(customer_info))
+                except Exception:
+                    pass
+
                 # Save to database
                 await save_livechat_to_db(session_id, persona_id, visitor_name, chat_sessions[session_id]["messages"])
 

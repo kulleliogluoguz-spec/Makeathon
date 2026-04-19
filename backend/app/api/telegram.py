@@ -272,6 +272,16 @@ The customer's intent score is high (70+). They are very interested in buying. Y
                 product_images.append(prod["image_url"])
 
         history.append({"role": "assistant", "content": reply_text})
+
+        # Store interaction in Cognee memory
+        try:
+            from app.services.cognee_memory import remember_customer
+            import asyncio
+            customer_info = f"Customer {chat_id} said: '{user_message[:100]}'. AI responded about products/services. Channel: telegram."
+            asyncio.create_task(remember_customer(customer_info))
+        except Exception:
+            pass
+
         return reply_text, product_images, recommend_ids, products
     except Exception as e:
         print(f"Telegram LLM error: {e}")

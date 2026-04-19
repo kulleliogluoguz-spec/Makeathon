@@ -46,6 +46,20 @@ async def happyrobot_webhook(request: Request):
         analysis=call_analysis,
     )
 
+    # Store call in Cognee memory
+    try:
+        from app.services.cognee_memory import remember_conversation
+        import asyncio
+        asyncio.create_task(
+            remember_conversation(
+                conversation_summary=call_analysis.get("call_summary", transcript[:200]),
+                customer_name=customer_name,
+                outcome=call_analysis.get("overall_outcome", "unknown"),
+            )
+        )
+    except Exception:
+        pass
+
     # If meeting was scheduled, create Meeting entry
     if call_analysis.get("meeting_scheduled"):
         await create_meeting_from_call(

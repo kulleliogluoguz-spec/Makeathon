@@ -52,6 +52,12 @@ async def lifespan(app: FastAPI):
     await seed_builtin_categories()
     await seed_demo_data()
     await seed_demo_meetings()
+    # Initialize Cognee memory
+    try:
+        from app.services.cognee_memory import init_cognee
+        await init_cognee()
+    except Exception as e:
+        print(f"Cognee startup error: {e}")
     yield
     # Shutdown
     await engine.dispose()

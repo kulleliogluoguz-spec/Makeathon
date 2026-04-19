@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     HAPPYROBOT_WEBHOOK_URL: str = "https://workflows.platform.eu.happyrobot.ai/hooks/fhiyxhmghaqj"
     HAPPYROBOT_WEBHOOK_SECRET: str = ""
 
+    # Cognee
+    LLM_API_KEY: str = ""
+
     # Netlify
     NETLIFY_ACCESS_TOKEN: str = ""
 

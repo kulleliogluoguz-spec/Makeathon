@@ -632,6 +632,15 @@ The customer's intent score is high (70+). They are very interested in buying. Y
 
         history.append({"role": "assistant", "content": reply_text})
 
+        # Store interaction in Cognee memory
+        try:
+            from app.services.cognee_memory import remember_customer
+            import asyncio
+            customer_info = f"Customer {sender} said: '{text[:100]}'. AI responded about products/services. Channel: instagram."
+            asyncio.create_task(remember_customer(customer_info))
+        except Exception:
+            pass
+
         # Update conversation state with scoring
         try:
             await update_conversation_state(

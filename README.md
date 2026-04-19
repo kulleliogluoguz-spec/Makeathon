@@ -25,10 +25,13 @@ An AI-powered customer engagement platform that automates lead generation, outre
 - **Call Transcripts**: Full AI call transcripts attached to each meeting
 - **Status Management**: scheduled, completed, cancelled, no_show
 
-### AI Self-Learning
+### AI Self-Learning + Cognee Knowledge Graph
 - **Learns from Mistakes**: After negative customer reactions (low CSAT, complaints, lost customers), AI analyzes what went wrong
-- **Lesson Database**: Stores mistakes with categories, better alternatives, and importance weights
-- **Auto-Improves**: Lessons injected into AI prompts — the AI gets better with every conversation
+- **Lesson Database**: Stores mistakes with categories, better alternatives, and importance weights (SQLite)
+- **Cognee Knowledge Graph**: All lessons, conversations, and customer interactions stored in Cognee's persistent knowledge graph via `cognee.remember()`
+- **Graph-Based Recall**: Before every AI response, relevant lessons recalled from Cognee via `cognee.recall()` — structured, graph-connected memory
+- **Auto-Improves**: Lessons from both SQLite and Cognee injected into AI prompts — the AI gets better with every conversation
+- **Customer Memory**: Every interaction stored in Cognee — AI remembers past conversations with returning customers
 - **Triggers**: Low CSAT (1-2), negative keywords, customer archived, complaint detected
 
 ### Customer Engagement (Multi-Channel)
@@ -162,6 +165,7 @@ HAPPYROBOT_USE_CASE_ID=your_use_case_id
 HAPPYROBOT_NUMBER_ID=your_number_id
 HAPPYROBOT_WEBHOOK_URL=your_happyrobot_webhook_url
 NETLIFY_ACCESS_TOKEN=your_netlify_token
+LLM_API_KEY=your_openai_key  # Used by Cognee (same as OPENAI_API_KEY)
 ```
 
 ## Tech Stack
@@ -170,6 +174,7 @@ NETLIFY_ACCESS_TOKEN=your_netlify_token
 - **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons
 - **LLM**: OpenAI GPT-4.1 (chat, ICP generation, lead scoring, outreach, self-learning)
 - **Landing Pages**: Anthropic Claude (claude-sonnet-4) for HTML generation
+- **AI Memory**: Cognee knowledge graph for persistent, graph-structured AI memory
 - **Lead Search**: OpenAI Responses API with web_search_preview
 - **LinkedIn**: Unipile API (search, invite, message)
 - **AI Calling**: HappyRobot outbound AI phone calls with webhook
