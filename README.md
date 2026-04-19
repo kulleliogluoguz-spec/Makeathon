@@ -165,7 +165,8 @@ HAPPYROBOT_USE_CASE_ID=your_use_case_id
 HAPPYROBOT_NUMBER_ID=your_number_id
 HAPPYROBOT_WEBHOOK_URL=your_happyrobot_webhook_url
 NETLIFY_ACCESS_TOKEN=your_netlify_token
-LLM_API_KEY=your_openai_key  # Used by Cognee (same as OPENAI_API_KEY)
+COGNEE_API_KEY=your_cognee_api_key
+LLM_API_KEY=your_openai_key  # Used by Cognee internally (same as OPENAI_API_KEY)
 ```
 
 ## Tech Stack
