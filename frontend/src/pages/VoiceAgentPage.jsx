@@ -5,6 +5,12 @@ export default function VoiceAgentPage() {
   const [isActive, setIsActive] = useState(false);
   const [status, setStatus] = useState('idle');
   const [messages, setMessages] = useState([]);
+  const [agentLang, setAgentLang] = useState('en');
+
+  const AGENT_IDS = {
+    en: 'agent_6701kpnen0hjfbnrn8arhahca07v',
+    tr: 'agent_2501kpnsy1xvevyt5pm6tkt5b16k',
+  };
   const messagesEndRef = useRef(null);
   const widgetRef = useRef(null);
   const filterIntervalRef = useRef(null);
@@ -12,6 +18,12 @@ export default function VoiceAgentPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (isActive) {
+      endConversation();
+    }
+  }, [agentLang]);
 
   const applyPhoneFilter = () => {
     // Find audio elements created by ElevenLabs SDK and apply phone filter
@@ -139,7 +151,7 @@ export default function VoiceAgentPage() {
   const initConversation = async () => {
     try {
       const conversation = await Conversation.startSession({
-        agentId: 'agent_6701kpnen0hjfbnrn8arhahca07v',
+        agentId: AGENT_IDS[agentLang] || AGENT_IDS.en,
         onConnect: () => {
           setStatus('connected');
           console.log('ElevenLabs connected');
@@ -173,7 +185,7 @@ export default function VoiceAgentPage() {
       setStatus('error');
 
       // Fallback: open in new tab
-      window.open('https://elevenlabs.io/app/talk-to?agent_id=agent_6701kpnen0hjfbnrn8arhahca07v&branch_id=agtbrch_4501kpnen1d1fd2r1j0vww1sm7hd', '_blank');
+      window.open(`https://elevenlabs.io/app/talk-to?agent_id=${AGENT_IDS[agentLang] || AGENT_IDS.en}`, '_blank');
       setIsActive(false);
     }
   };
@@ -217,6 +229,20 @@ export default function VoiceAgentPage() {
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.25rem' }}>Voice Agent</h1>
         <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Talk to the AI sales agent in real-time</p>
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '0.75rem' }}>
+          <button onClick={() => setAgentLang('en')} style={{
+            padding: '6px 16px', fontSize: '0.8rem', borderRadius: '9999px', cursor: 'pointer',
+            background: agentLang === 'en' ? '#000' : '#fff',
+            color: agentLang === 'en' ? '#fff' : '#374151',
+            border: '1px solid #e5e7eb',
+          }}>🇬🇧 English</button>
+          <button onClick={() => setAgentLang('tr')} style={{
+            padding: '6px 16px', fontSize: '0.8rem', borderRadius: '9999px', cursor: 'pointer',
+            background: agentLang === 'tr' ? '#000' : '#fff',
+            color: agentLang === 'tr' ? '#fff' : '#374151',
+            border: '1px solid #e5e7eb',
+          }}>🇹🇷 Türkçe</button>
+        </div>
       </div>
 
       {/* Mic/Call Button */}
