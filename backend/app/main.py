@@ -38,6 +38,7 @@ from app.api.telegram import router as telegram_router
 from app.api.tryon import router as tryon_router
 from app.api.leads import router as leads_router
 from app.api.unipile_api import router as unipile_router
+from app.api.voice_agent import router as voice_agent_router
 
 # Create media directory
 Path("media").mkdir(exist_ok=True)
@@ -71,6 +72,11 @@ app = FastAPI(
 )
 
 app.mount("/media", StaticFiles(directory="media"), name="media")
+
+import os as _os
+_static_dir = _os.path.join(_os.path.dirname(__file__), "static")
+if _os.path.exists(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -110,6 +116,7 @@ app.include_router(telegram_router, prefix="/api/v1", tags=["Telegram"])
 app.include_router(tryon_router, prefix="/api/v1", tags=["TryOn"])
 app.include_router(leads_router, prefix="/api/v1", tags=["Leads"])
 app.include_router(unipile_router, prefix="/api/v1", tags=["LinkedIn & Calls"])
+app.include_router(voice_agent_router, prefix="/api/v1", tags=["Voice Agent"])
 
 from app.api.meetings import router as meetings_router
 app.include_router(meetings_router, prefix="/api/v1", tags=["Meetings"])

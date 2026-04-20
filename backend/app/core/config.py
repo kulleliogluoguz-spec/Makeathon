@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     DEFAULT_TTS_VOICE: str = "rachel"
     DEFAULT_TTS_MODEL: str = "eleven_turbo_v2"
 
+    # Deepgram
+    DEEPGRAM_API_KEY: str = ""
+
     # STT Settings
     DEFAULT_STT_PROVIDER: str = "openai"  # openai | deepgram | local
     DEFAULT_STT_MODEL: str = "whisper-1"
