@@ -34,6 +34,20 @@ An AI-powered customer engagement platform that automates lead generation, outre
 - **Customer Memory**: Every interaction stored in Cognee — AI remembers past conversations with returning customers
 - **Triggers**: Low CSAT (1-2), negative keywords, customer archived, complaint detected
 
+### Real-Time Voice Agent (ElevenLabs Conversational AI)
+- **Browser-Based Voice Calls**: Click-to-call AI voice agent directly in the platform
+- **ElevenLabs Conversational AI SDK**: Real-time STT, LLM, TTS, turn-taking, and interruption handling
+- **Phone Line Audio Filter**: Telephone bandpass (300Hz–3400Hz), compression, subtle line crackle — sounds like a real phone call
+- **Office Ambient Background**: Subtle room tone and keyboard clicks during calls for realism
+- **Fallback Backend Pipeline**: Deepgram STT → GPT-4o-mini → ElevenLabs TTS via WebSocket (alternative mode)
+
+### Broadcast Campaigns
+- **Multi-Channel Broadcasts**: Send bulk messages via Email (Resend) and Telegram
+- **Campaign Management**: Create, preview recipients, send, track results
+- **Recipient Filters**: Filter by source (Instagram, Telegram, Messenger, Live Chat), tags, categories
+- **Live Stats**: Sent/failed counts, delivery results per customer
+- **Draft & Send**: Save campaigns as draft, preview before sending
+
 ### Customer Engagement (Multi-Channel)
 - **Persona Builder**: 8 personality traits, communication style, emotional responses, auto-generated system prompts
 - **Omnichannel AI**: Instagram, Telegram, Messenger, WhatsApp, Live Chat — all with AI auto-responses
@@ -57,6 +71,8 @@ An AI-powered customer engagement platform that automates lead generation, outre
 - **Customers**: Unified CRM with filters, categories, search
 - **Lead Finder**: Search, score, call, draft outreach, auto-generate landing pages
 - **Meetings**: Calendar with full AI-generated meeting reports
+- **Voice Agent**: Real-time AI voice calls with phone filter and ambient effects
+- **Broadcasts**: Create and send multi-channel campaigns (Email + Telegram)
 - **Settings**: Business hours, auto-reply, meeting availability, live chat widget
 
 ## Setup
@@ -130,6 +146,12 @@ API Docs: http://localhost:8000/docs
 | `/api/v1/landing-pages/{id}/refine` | POST | Refine landing page with AI |
 | `/api/v1/landing-pages/{id}/deploy` | POST | Deploy to Netlify |
 | `/api/v1/landing-pages/auto-generate-for-lead` | POST | Auto-generate for top lead |
+| `/api/v1/broadcasts/` | GET, POST | List/create broadcast campaigns |
+| `/api/v1/broadcasts/{id}` | GET, DELETE | Get/delete campaign |
+| `/api/v1/broadcasts/{id}/send` | POST | Send campaign to recipients |
+| `/api/v1/broadcasts/{id}/preview` | GET | Preview recipients |
+| `/api/v1/ws/voice-agent` | WebSocket | Real-time voice agent conversation |
+| `/api/v1/voice-agent/config` | GET | Voice agent config (Deepgram key) |
 
 ## Workflow Node Types
 
@@ -165,6 +187,8 @@ HAPPYROBOT_USE_CASE_ID=your_use_case_id
 HAPPYROBOT_NUMBER_ID=your_number_id
 HAPPYROBOT_WEBHOOK_URL=your_happyrobot_webhook_url
 NETLIFY_ACCESS_TOKEN=your_netlify_token
+DEEPGRAM_API_KEY=your_deepgram_api_key
+RESEND_API_KEY=your_resend_api_key
 COGNEE_API_KEY=your_cognee_api_key
 LLM_API_KEY=your_openai_key  # Used by Cognee internally (same as OPENAI_API_KEY)
 ```
@@ -181,4 +205,6 @@ LLM_API_KEY=your_openai_key  # Used by Cognee internally (same as OPENAI_API_KEY
 - **AI Calling**: HappyRobot outbound AI phone calls with webhook
 - **Deployment**: Netlify API for landing page auto-deploy
 - **Channels**: Instagram, Telegram, Messenger, WhatsApp, Live Chat
-- **Voice**: ElevenLabs API, OpenAI Whisper (STT), WebSocket
+- **Voice Agent**: ElevenLabs Conversational AI SDK (real-time), Deepgram Nova-2 (STT), WebSocket
+- **Broadcast**: Resend (email), Telegram Bot API
+- **Audio FX**: Web Audio API (phone filter, ambient noise generation)

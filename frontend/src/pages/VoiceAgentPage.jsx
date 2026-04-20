@@ -7,15 +7,133 @@ export default function VoiceAgentPage() {
   const [messages, setMessages] = useState([]);
   const messagesEndRef = useRef(null);
   const widgetRef = useRef(null);
+  const filterIntervalRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const applyPhoneFilter = () => {
+    // Find audio elements created by ElevenLabs SDK and apply phone filter
+    const interval = setInterval(() => {
+      const audioEls = document.querySelectorAll('audio');
+      audioEls.forEach(el => {
+        if (el.dataset.filtered) return;
+        el.dataset.filtered = 'true';
+
+        try {
+          if (!window.__filterCtx) {
+            window.__filterCtx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          const ctx = window.__filterCtx;
+          const source = ctx.createMediaElementSource(el);
+
+          // Telephone bandpass: 300Hz - 3400Hz
+          const highpass = ctx.createBiquadFilter();
+          highpass.type = 'highpass';
+          highpass.frequency.value = 300;
+          highpass.Q.value = 0.5;
+
+          const lowpass = ctx.createBiquadFilter();
+          lowpass.type = 'lowpass';
+          lowpass.frequency.value = 3400;
+          lowpass.Q.value = 0.5;
+
+          // Compress like phone line
+          const compressor = ctx.createDynamicsCompressor();
+          compressor.threshold.value = -15;
+          compressor.ratio.value = 3;
+
+          // Slightly quieter (distant feel)
+          const gain = ctx.createGain();
+          gain.gain.value = 0.8;
+
+          // Add very subtle noise/crackle
+          const noiseGain = ctx.createGain();
+          noiseGain.gain.value = 0.008;
+          const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+          const noiseData = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < noiseData.length; i++) {
+            noiseData[i] = (Math.random() * 2 - 1);
+            if (i > 0) noiseData[i] = noiseData[i] * 0.1 + noiseData[i-1] * 0.9;
+          }
+          const noiseSource = ctx.createBufferSource();
+          noiseSource.buffer = noiseBuffer;
+          noiseSource.loop = true;
+          noiseSource.connect(noiseGain);
+          noiseGain.connect(ctx.destination);
+          noiseSource.start();
+
+          // Chain: source → highpass → lowpass → compressor → gain → speakers
+          source.connect(highpass);
+          highpass.connect(lowpass);
+          lowpass.connect(compressor);
+          compressor.connect(gain);
+          gain.connect(ctx.destination);
+
+          console.log('Phone filter applied to audio element');
+        } catch(e) {
+          console.log('Could not apply phone filter:', e);
+        }
+      });
+    }, 500);
+
+    // Stop checking after 30 seconds
+    setTimeout(() => clearInterval(interval), 30000);
+
+    return interval;
+  };
+
   const startConversation = async () => {
     setIsActive(true);
     setStatus('connecting');
+
+    // Subtle office background audio
+    if (!window.__ambientAudio) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.25;
+        gain.connect(ctx.destination);
+
+        const bufferSize = ctx.sampleRate * 20;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        // Gentle room tone
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * 0.003;
+          if (i > 0) data[i] = data[i] * 0.03 + data[i-1] * 0.97;
+        }
+
+        // Rare quiet keyboard clicks
+        for (let j = 0; j < 8; j++) {
+          const pos = Math.floor(Math.random() * (bufferSize - 200));
+          for (let k = 0; k < 3; k++) {
+            const clickPos = pos + k * Math.floor(Math.random() * 2000 + 1500);
+            if (clickPos + 150 < bufferSize) {
+              for (let s = 0; s < 150; s++) {
+                data[clickPos + s] += (Math.random() * 2 - 1) * 0.002 * Math.exp(-s * 0.1);
+              }
+            }
+          }
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        source.connect(gain);
+        source.start();
+        window.__ambientAudio = { ctx, gain, source };
+      } catch(e) {}
+    } else {
+      // Resume if already exists
+      window.__ambientAudio.gain.gain.linearRampToValueAtTime(0.25, window.__ambientAudio.ctx.currentTime + 0.5);
+    }
     await initConversation();
+
+    // Apply telephone filter to make it sound like a real phone call
+    filterIntervalRef.current = applyPhoneFilter();
   };
 
   const initConversation = async () => {
@@ -61,8 +179,12 @@ export default function VoiceAgentPage() {
   };
 
   const endConversation = async () => {
+    if (filterIntervalRef.current) clearInterval(filterIntervalRef.current);
     if (widgetRef.current) {
       await widgetRef.current.endSession();
+    }
+    if (window.__ambientAudio) {
+      window.__ambientAudio.gain.gain.linearRampToValueAtTime(0, window.__ambientAudio.ctx.currentTime + 1);
     }
     setIsActive(false);
     setStatus('idle');
