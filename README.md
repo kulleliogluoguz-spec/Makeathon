@@ -39,6 +39,7 @@ An AI-powered customer engagement platform that automates lead generation, outre
 - **ElevenLabs Conversational AI SDK**: Real-time STT, LLM, TTS, turn-taking, and interruption handling
 - **Phone Line Audio Filter**: Telephone bandpass (300Hz–3400Hz), compression, subtle line crackle — sounds like a real phone call
 - **Office Ambient Background**: Subtle room tone and keyboard clicks during calls for realism
+- **Multi-Language Support**: English/Turkish toggle — each language connects to a dedicated ElevenLabs agent
 - **Fallback Backend Pipeline**: Deepgram STT → GPT-4o-mini → ElevenLabs TTS via WebSocket (alternative mode)
 
 ### Broadcast Campaigns
